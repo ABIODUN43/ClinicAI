@@ -1,0 +1,6 @@
+state,suspected_cases,confirmed_cases,deaths,cfr,metric_scope,extraction_confidence,source_note
+Bauchi,,25,5,20.0,cumulative,medium,Confirmed counts inferred from highlight percentages in the SITREP.
+Ondo,,8,2,25.0,cumulative,low,Confirmed counts distributed from remaining cumulative total using active-state highlights.
+Edo,,7,1,14.3,cumulative,low,Confirmed counts distributed from remaining cumulative total using active-state highlights.
+Taraba,,7,2,28.6,cumulative,low,Confirmed counts distributed from remaining cumulative total using active-state highlights.
+Ogun,,7,1,14.3,cumulative,low,Confirmed counts distributed from remaining cumulative total using active-state highlights.

@@ -1,0 +1,36 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: clinicai-backend
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: sqlite:////data/clinicai_sentinel.db
+    ports:
+      - "8000:8000"
+    volumes:
+      - clinicai_data:/data
+      - clinicai_reports:/app/backend/reports
+      - clinicai_outbox:/app/backend/outbox
+      - clinicai_artifacts:/app/backend/artifacts
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+      args:
+        VITE_API_URL: http://localhost:8000
+        VITE_GOOGLE_CLIENT_ID: ${VITE_GOOGLE_CLIENT_ID}
+    container_name: clinicai-frontend
+    depends_on:
+      - backend
+    ports:
+      - "8080:80"
+
+volumes:
+  clinicai_data:
+  clinicai_reports:
+  clinicai_outbox:
+  clinicai_artifacts:

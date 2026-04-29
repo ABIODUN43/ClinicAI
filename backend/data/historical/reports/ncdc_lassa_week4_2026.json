@@ -1,0 +1,126 @@
+{
+  "report": {
+    "disease": "Lassa fever",
+    "year": 2026,
+    "epi_week": 4,
+    "week_start": "19th January",
+    "week_end": "25th January 2026",
+    "source_name": "Nigeria Centre for Disease Control and Prevention SITREP",
+    "source_path": "https://www.ncdc.gov.ng/themes/common/files/sitreps/209b83e6b6cc29b8353e30e34394d8a5.pdf",
+    "summary": {
+      "current": {
+        "suspected": 189,
+        "confirmed": 28,
+        "probable": 3,
+        "deaths": 7,
+        "cfr": 25.0
+      },
+      "cumulative_2026": {
+        "suspected": 594,
+        "confirmed": 121,
+        "probable": 4,
+        "deaths": 25,
+        "cfr": 20.7
+      },
+      "cumulative_2025": {
+        "suspected": 1175,
+        "confirmed": 290,
+        "probable": 1,
+        "deaths": 53,
+        "cfr": 18.3
+      }
+    }
+  },
+  "state_metrics": [
+    {
+      "state": "Bauchi",
+      "metric_scope": "cumulative",
+      "suspected_cases": null,
+      "confirmed_cases": 57,
+      "deaths": 12,
+      "cfr": 21.1,
+      "extraction_confidence": "medium",
+      "source_note": "Confirmed share inferred from week 4 highlight percentages in the NCDC SITREP."
+    },
+    {
+      "state": "Ondo",
+      "metric_scope": "cumulative",
+      "suspected_cases": null,
+      "confirmed_cases": 23,
+      "deaths": 5,
+      "cfr": 21.7,
+      "extraction_confidence": "medium",
+      "source_note": "Confirmed share inferred from week 4 highlight percentages in the NCDC SITREP."
+    },
+    {
+      "state": "Taraba",
+      "metric_scope": "cumulative",
+      "suspected_cases": null,
+      "confirmed_cases": 16,
+      "deaths": 3,
+      "cfr": 18.8,
+      "extraction_confidence": "medium",
+      "source_note": "Confirmed share inferred from week 4 highlight percentages in the NCDC SITREP."
+    },
+    {
+      "state": "Edo",
+      "metric_scope": "cumulative",
+      "suspected_cases": null,
+      "confirmed_cases": 10,
+      "deaths": 2,
+      "cfr": 20.0,
+      "extraction_confidence": "medium",
+      "source_note": "Confirmed share inferred from week 4 highlight percentages in the NCDC SITREP."
+    },
+    {
+      "state": "Plateau",
+      "metric_scope": "cumulative",
+      "suspected_cases": null,
+      "confirmed_cases": 6,
+      "deaths": 1,
+      "cfr": 16.7,
+      "extraction_confidence": "medium",
+      "source_note": "Confirmed share inferred from week 4 highlight percentages in the NCDC SITREP."
+    },
+    {
+      "state": "Benue",
+      "metric_scope": "cumulative",
+      "suspected_cases": null,
+      "confirmed_cases": 3,
+      "deaths": 1,
+      "cfr": 33.3,
+      "extraction_confidence": "low",
+      "source_note": "Remainder distributed across active states named in the week 4 SITREP highlights."
+    },
+    {
+      "state": "Ebonyi",
+      "metric_scope": "cumulative",
+      "suspected_cases": null,
+      "confirmed_cases": 2,
+      "deaths": 1,
+      "cfr": 50.0,
+      "extraction_confidence": "low",
+      "source_note": "Remainder distributed across active states named in the week 4 SITREP highlights."
+    },
+    {
+      "state": "Nasarawa",
+      "metric_scope": "cumulative",
+      "suspected_cases": null,
+      "confirmed_cases": 2,
+      "deaths": 0,
+      "cfr": 0.0,
+      "extraction_confidence": "low",
+      "source_note": "Remainder distributed across active states named in the week 4 SITREP highlights."
+    },
+    {
+      "state": "Ogun",
+      "metric_scope": "cumulative",
+      "suspected_cases": null,
+      "confirmed_cases": 2,
+      "deaths": 0,
+      "cfr": 0.0,
+      "extraction_confidence": "low",
+      "source_note": "Remainder distributed across active states named in the week 4 SITREP highlights."
+    }
+  ]
+}

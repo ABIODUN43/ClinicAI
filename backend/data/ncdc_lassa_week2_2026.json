@@ -1,0 +1,136 @@
+{
+  "report": {
+    "disease": "Lassa fever",
+    "year": 2026,
+    "epi_week": 2,
+    "week_start": "5th January",
+    "week_end": "11th January 2026",
+    "source_name": "Nigeria Centre for Disease Control and Prevention SITREP",
+    "source_path": "C:\\Users\\user\\Videos\\Lassa Fever situation Report NCDC.pdf",
+    "summary": {
+      "current": {
+        "suspected": 144,
+        "confirmed": 33,
+        "probable": 1,
+        "deaths": 2,
+        "cfr": 6.1
+      },
+      "cumulative_2026": {
+        "suspected": 248,
+        "confirmed": 54,
+        "probable": 1,
+        "deaths": 11,
+        "cfr": 20.4
+      },
+      "cumulative_2025": {
+        "suspected": 484,
+        "confirmed": 143,
+        "probable": 0,
+        "deaths": 22,
+        "cfr": 15.4
+      }
+    }
+  },
+  "state_metrics": [
+    {
+      "state": "Bauchi",
+      "metric_scope": "cumulative",
+      "suspected_cases": 72,
+      "confirmed_cases": 25,
+      "deaths": 7,
+      "cfr": 28.0,
+      "extraction_confidence": "high",
+      "source_note": "Derived from Figure 5 state bars and CFR markers in the week 2 2026 SITREP."
+    },
+    {
+      "state": "Ondo",
+      "metric_scope": "cumulative",
+      "suspected_cases": null,
+      "confirmed_cases": 16,
+      "deaths": 1,
+      "cfr": 6.3,
+      "extraction_confidence": "medium",
+      "source_note": "Confirmed count derived from Figure 5; death count inferred from CFR marker and national total."
+    },
+    {
+      "state": "Edo",
+      "metric_scope": "cumulative",
+      "suspected_cases": 51,
+      "confirmed_cases": 7,
+      "deaths": 3,
+      "cfr": 42.9,
+      "extraction_confidence": "high",
+      "source_note": "State suspected count from Table 3 image, confirmed and CFR from Figure 5."
+    },
+    {
+      "state": "Taraba",
+      "metric_scope": "cumulative",
+      "suspected_cases": null,
+      "confirmed_cases": 5,
+      "deaths": 0,
+      "cfr": 0.0,
+      "extraction_confidence": "medium",
+      "source_note": "Confirmed count derived from Figure 5 and report highlights; no death marker shown."
+    },
+    {
+      "state": "Ogun",
+      "metric_scope": "cumulative",
+      "suspected_cases": 2,
+      "confirmed_cases": 1,
+      "deaths": 0,
+      "cfr": 0.0,
+      "extraction_confidence": "high",
+      "source_note": "Visible in Table 3 image and Figure 5."
+    },
+    {
+      "state": "Gombe",
+      "metric_scope": "cumulative",
+      "suspected_cases": 3,
+      "confirmed_cases": 0,
+      "deaths": 0,
+      "cfr": 0.0,
+      "extraction_confidence": "medium",
+      "source_note": "Suspected count visible in Table 3 image; no confirmed bar shown in Figure 5."
+    },
+    {
+      "state": "Lagos",
+      "metric_scope": "cumulative",
+      "suspected_cases": 2,
+      "confirmed_cases": 0,
+      "deaths": 0,
+      "cfr": 0.0,
+      "extraction_confidence": "medium",
+      "source_note": "Suspected count visible in Table 3 image; no confirmed bar shown in Figure 5."
+    },
+    {
+      "state": "Ebonyi",
+      "metric_scope": "cumulative",
+      "suspected_cases": 3,
+      "confirmed_cases": 0,
+      "deaths": 0,
+      "cfr": 0.0,
+      "extraction_confidence": "medium",
+      "source_note": "Suspected count visible in Table 3 image; no confirmed bar shown in Figure 5."
+    },
+    {
+      "state": "Benue",
+      "metric_scope": "cumulative",
+      "suspected_cases": 4,
+      "confirmed_cases": 0,
+      "deaths": 0,
+      "cfr": 0.0,
+      "extraction_confidence": "medium",
+      "source_note": "Suspected count visible in Table 3 image; no confirmed bar shown in Figure 5."
+    },
+    {
+      "state": "Oyo",
+      "metric_scope": "cumulative",
+      "suspected_cases": 1,
+      "confirmed_cases": 0,
+      "deaths": 0,
+      "cfr": 0.0,
+      "extraction_confidence": "medium",
+      "source_note": "Suspected count visible in Table 3 image; no confirmed bar shown in Figure 5."
+    }
+  ]
+}

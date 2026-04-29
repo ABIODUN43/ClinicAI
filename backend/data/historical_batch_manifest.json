@@ -1,0 +1,19 @@
+{
+  "disease": "Lassa fever",
+  "auto_discover": true,
+  "auto_discover_dir": "backend/data/historical",
+  "reports": [
+    "backend/data/ncdc_lassa_week2_2026.json"
+  ],
+  "weather_files": [
+    "backend/data/historical_weather_week2_2026.csv"
+  ],
+  "symptom_files": [
+    "backend/data/historical_symptoms_week2_2026.csv"
+  ],
+  "news_files": [
+    "backend/data/historical_news_week2_2026.csv"
+  ],
+  "training_output_csv": "backend/data/training_dataset.csv",
+  "model_artifact_path": "backend/artifacts/clinicai_baseline_model.json"
+}

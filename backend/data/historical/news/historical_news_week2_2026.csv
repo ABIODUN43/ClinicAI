@@ -1,0 +1,11 @@
+year,epi_week,state,source_name,news_signal_count,high_severity_news_count,rodent_risk_mentions,outbreak_mentions
+2026,2,Bauchi,Sample historical news import,9,5,4,3
+2026,2,Ondo,Sample historical news import,8,4,4,2
+2026,2,Edo,Sample historical news import,6,4,3,2
+2026,2,Taraba,Sample historical news import,4,2,1,1
+2026,2,Ogun,Sample historical news import,2,1,1,0
+2026,2,Gombe,Sample historical news import,1,0,0,0
+2026,2,Lagos,Sample historical news import,1,0,0,0
+2026,2,Ebonyi,Sample historical news import,2,1,1,0
+2026,2,Benue,Sample historical news import,1,0,0,0
+2026,2,Oyo,Sample historical news import,1,0,0,0

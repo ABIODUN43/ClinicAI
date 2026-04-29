@@ -1,0 +1,11 @@
+year,epi_week,state,source_name,temperature_c,rainfall_mm,humidity_pct,dry_season_index
+2026,2,Bauchi,Sample historical weather import,34.2,6.0,42.0,0.88
+2026,2,Ondo,Sample historical weather import,32.8,14.0,56.0,0.71
+2026,2,Edo,Sample historical weather import,33.1,15.0,54.0,0.74
+2026,2,Taraba,Sample historical weather import,31.6,11.0,58.0,0.63
+2026,2,Ogun,Sample historical weather import,31.4,18.0,62.0,0.52
+2026,2,Gombe,Sample historical weather import,35.0,4.0,40.0,0.9
+2026,2,Lagos,Sample historical weather import,30.8,22.0,70.0,0.34
+2026,2,Ebonyi,Sample historical weather import,31.9,17.0,60.0,0.58
+2026,2,Benue,Sample historical weather import,32.2,13.0,57.0,0.61
+2026,2,Oyo,Sample historical weather import,31.7,19.0,64.0,0.49

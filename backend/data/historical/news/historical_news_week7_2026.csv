@@ -1,0 +1,3 @@
+year,epi_week,state,source_name,news_signal_count,high_severity_news_count,rodent_risk_mentions,outbreak_mentions
+2026,7,Bauchi,Aggregated NLP-classified news records from ClinicAI Sentinel DB,1,1,0,1
+2026,7,Ondo,Aggregated NLP-classified news records from ClinicAI Sentinel DB,1,1,1,0

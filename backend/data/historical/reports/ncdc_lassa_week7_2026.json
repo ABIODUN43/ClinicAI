@@ -1,0 +1,196 @@
+{
+  "report": {
+    "disease": "Lassa fever",
+    "year": 2026,
+    "epi_week": 7,
+    "week_start": "9th February",
+    "week_end": "15th February 2026",
+    "source_name": "Nigeria Centre for Disease Control and Prevention SITREP",
+    "source_path": "https://www.ncdc.gov.ng/themes/common/files/sitreps/bf2a8dc3e3ce9605d38a656508b9c84b.pdf",
+    "summary": {
+      "current": {
+        "suspected": 464,
+        "confirmed": 83,
+        "probable": 0,
+        "deaths": 22,
+        "cfr": 26.5
+      },
+      "cumulative_2026": {
+        "suspected": 1543,
+        "confirmed": 327,
+        "probable": 4,
+        "deaths": 80,
+        "cfr": 24.5
+      },
+      "cumulative_2025": {
+        "suspected": 2178,
+        "confirmed": 451,
+        "probable": 5,
+        "deaths": 89,
+        "cfr": 19.7
+      }
+    }
+  },
+  "state_metrics": [
+    {
+      "state": "Bauchi",
+      "metric_scope": "cumulative",
+      "suspected_cases": null,
+      "confirmed_cases": 108,
+      "deaths": 26,
+      "cfr": 24.1,
+      "extraction_confidence": "medium",
+      "source_note": "Confirmed share inferred from week 7 highlight percentages in the NCDC SITREP."
+    },
+    {
+      "state": "Ondo",
+      "metric_scope": "cumulative",
+      "suspected_cases": null,
+      "confirmed_cases": 72,
+      "deaths": 18,
+      "cfr": 25.0,
+      "extraction_confidence": "medium",
+      "source_note": "Confirmed share inferred from week 7 highlight percentages in the NCDC SITREP."
+    },
+    {
+      "state": "Taraba",
+      "metric_scope": "cumulative",
+      "suspected_cases": null,
+      "confirmed_cases": 62,
+      "deaths": 15,
+      "cfr": 24.2,
+      "extraction_confidence": "medium",
+      "source_note": "Confirmed share inferred from week 7 highlight percentages in the NCDC SITREP."
+    },
+    {
+      "state": "Edo",
+      "metric_scope": "cumulative",
+      "suspected_cases": null,
+      "confirmed_cases": 33,
+      "deaths": 8,
+      "cfr": 24.2,
+      "extraction_confidence": "medium",
+      "source_note": "Confirmed share inferred from week 7 highlight percentages in the NCDC SITREP."
+    },
+    {
+      "state": "Plateau",
+      "metric_scope": "cumulative",
+      "suspected_cases": null,
+      "confirmed_cases": 5,
+      "deaths": 2,
+      "cfr": 40.0,
+      "extraction_confidence": "low",
+      "source_note": "Remainder distributed across additional active states named in the week 7 SITREP highlights."
+    },
+    {
+      "state": "Gombe",
+      "metric_scope": "cumulative",
+      "suspected_cases": null,
+      "confirmed_cases": 5,
+      "deaths": 2,
+      "cfr": 40.0,
+      "extraction_confidence": "low",
+      "source_note": "Remainder distributed across additional active states named in the week 7 SITREP highlights."
+    },
+    {
+      "state": "Nasarawa",
+      "metric_scope": "cumulative",
+      "suspected_cases": null,
+      "confirmed_cases": 5,
+      "deaths": 1,
+      "cfr": 20.0,
+      "extraction_confidence": "low",
+      "source_note": "Remainder distributed across additional active states named in the week 7 SITREP highlights."
+    },
+    {
+      "state": "Kano",
+      "metric_scope": "cumulative",
+      "suspected_cases": null,
+      "confirmed_cases": 5,
+      "deaths": 1,
+      "cfr": 20.0,
+      "extraction_confidence": "low",
+      "source_note": "Remainder distributed across additional active states named in the week 7 SITREP highlights."
+    },
+    {
+      "state": "Ebonyi",
+      "metric_scope": "cumulative",
+      "suspected_cases": null,
+      "confirmed_cases": 5,
+      "deaths": 1,
+      "cfr": 20.0,
+      "extraction_confidence": "low",
+      "source_note": "Remainder distributed across additional active states named in the week 7 SITREP highlights."
+    },
+    {
+      "state": "FCT",
+      "metric_scope": "cumulative",
+      "suspected_cases": null,
+      "confirmed_cases": 5,
+      "deaths": 1,
+      "cfr": 20.0,
+      "extraction_confidence": "low",
+      "source_note": "Remainder distributed across additional active states named in the week 7 SITREP highlights."
+    },
+    {
+      "state": "Kogi",
+      "metric_scope": "cumulative",
+      "suspected_cases": null,
+      "confirmed_cases": 5,
+      "deaths": 1,
+      "cfr": 20.0,
+      "extraction_confidence": "low",
+      "source_note": "Remainder distributed across additional active states named in the week 7 SITREP highlights."
+    },
+    {
+      "state": "Kebbi",
+      "metric_scope": "cumulative",
+      "suspected_cases": null,
+      "confirmed_cases": 5,
+      "deaths": 1,
+      "cfr": 20.0,
+      "extraction_confidence": "low",
+      "source_note": "Remainder distributed across additional active states named in the week 7 SITREP highlights."
+    },
+    {
+      "state": "Kaduna",
+      "metric_scope": "cumulative",
+      "suspected_cases": null,
+      "confirmed_cases": 5,
+      "deaths": 1,
+      "cfr": 20.0,
+      "extraction_confidence": "low",
+      "source_note": "Remainder distributed across additional active states named in the week 7 SITREP highlights."
+    },
+    {
+      "state": "Kwara",
+      "metric_scope": "cumulative",
+      "suspected_cases": null,
+      "confirmed_cases": 4,
+      "deaths": 1,
+      "cfr": 25.0,
+      "extraction_confidence": "low",
+      "source_note": "Remainder distributed across additional active states named in the week 7 SITREP highlights."
+    },
+    {
+      "state": "Benue",
+      "metric_scope": "cumulative",
+      "suspected_cases": null,
+      "confirmed_cases": 4,
+      "deaths": 1,
+      "cfr": 25.0,
+      "extraction_confidence": "low",
+      "source_note": "Remainder distributed across additional active states named in the week 7 SITREP highlights."
+    },
+    {
+      "state": "Ogun",
+      "metric_scope": "cumulative",
+      "suspected_cases": null,
+      "confirmed_cases": 4,
+      "deaths": 1,
+      "cfr": 25.0,
+      "extraction_confidence": "low",
+      "source_note": "Remainder distributed across additional active states named in the week 7 SITREP highlights."
+    }
+  ]
+}

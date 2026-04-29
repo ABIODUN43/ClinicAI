@@ -1,0 +1,136 @@
+{
+  "report": {
+    "disease": "Lassa fever",
+    "year": 2026,
+    "epi_week": 6,
+    "week_start": "2nd February",
+    "week_end": "8th February 2026",
+    "source_name": "Nigeria Centre for Disease Control and Prevention SITREP",
+    "source_path": "https://www.ncdc.gov.ng/themes/common/files/sitreps/fa363f59cbe7ad9f567b8bb7abb1cd3d.pdf",
+    "summary": {
+      "current": {
+        "suspected": 271,
+        "confirmed": 74,
+        "probable": 0,
+        "deaths": 15,
+        "cfr": 20.3
+      },
+      "cumulative_2026": {
+        "suspected": 1034,
+        "confirmed": 240,
+        "probable": 4,
+        "deaths": 51,
+        "cfr": 21.3
+      },
+      "cumulative_2025": {
+        "suspected": 1913,
+        "confirmed": 413,
+        "probable": 5,
+        "deaths": 80,
+        "cfr": 19.4
+      }
+    }
+  },
+  "state_metrics": [
+    {
+      "state": "Bauchi",
+      "metric_scope": "cumulative",
+      "suspected_cases": null,
+      "confirmed_cases": 91,
+      "deaths": 19,
+      "cfr": 20.9,
+      "extraction_confidence": "medium",
+      "source_note": "Confirmed share inferred from week 6 highlight percentages in the NCDC SITREP."
+    },
+    {
+      "state": "Taraba",
+      "metric_scope": "cumulative",
+      "suspected_cases": null,
+      "confirmed_cases": 53,
+      "deaths": 11,
+      "cfr": 20.8,
+      "extraction_confidence": "medium",
+      "source_note": "Confirmed share inferred from week 6 highlight percentages in the NCDC SITREP."
+    },
+    {
+      "state": "Ondo",
+      "metric_scope": "cumulative",
+      "suspected_cases": null,
+      "confirmed_cases": 48,
+      "deaths": 10,
+      "cfr": 20.8,
+      "extraction_confidence": "medium",
+      "source_note": "Confirmed share inferred from week 6 highlight percentages in the NCDC SITREP."
+    },
+    {
+      "state": "Edo",
+      "metric_scope": "cumulative",
+      "suspected_cases": null,
+      "confirmed_cases": 22,
+      "deaths": 5,
+      "cfr": 22.7,
+      "extraction_confidence": "medium",
+      "source_note": "Confirmed share inferred from week 6 highlight percentages in the NCDC SITREP."
+    },
+    {
+      "state": "Benue",
+      "metric_scope": "cumulative",
+      "suspected_cases": null,
+      "confirmed_cases": 5,
+      "deaths": 1,
+      "cfr": 20.0,
+      "extraction_confidence": "low",
+      "source_note": "Remainder distributed across active states named in the week 6 SITREP highlights."
+    },
+    {
+      "state": "Nasarawa",
+      "metric_scope": "cumulative",
+      "suspected_cases": null,
+      "confirmed_cases": 5,
+      "deaths": 1,
+      "cfr": 20.0,
+      "extraction_confidence": "low",
+      "source_note": "Remainder distributed across active states named in the week 6 SITREP highlights."
+    },
+    {
+      "state": "Kogi",
+      "metric_scope": "cumulative",
+      "suspected_cases": null,
+      "confirmed_cases": 4,
+      "deaths": 1,
+      "cfr": 25.0,
+      "extraction_confidence": "low",
+      "source_note": "Remainder distributed across active states named in the week 6 SITREP highlights."
+    },
+    {
+      "state": "Ebonyi",
+      "metric_scope": "cumulative",
+      "suspected_cases": null,
+      "confirmed_cases": 4,
+      "deaths": 1,
+      "cfr": 25.0,
+      "extraction_confidence": "low",
+      "source_note": "Remainder distributed across active states named in the week 6 SITREP highlights."
+    },
+    {
+      "state": "Plateau",
+      "metric_scope": "cumulative",
+      "suspected_cases": null,
+      "confirmed_cases": 4,
+      "deaths": 1,
+      "cfr": 25.0,
+      "extraction_confidence": "low",
+      "source_note": "Remainder distributed across active states named in the week 6 SITREP highlights."
+    },
+    {
+      "state": "Ogun",
+      "metric_scope": "cumulative",
+      "suspected_cases": null,
+      "confirmed_cases": 4,
+      "deaths": 1,
+      "cfr": 25.0,
+      "extraction_confidence": "low",
+      "source_note": "Remainder distributed across active states named in the week 6 SITREP highlights."
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+year,epi_week,state,source_name,temperature_c,rainfall_mm,humidity_pct,dry_season_index
+2026,7,Bauchi,Open-Meteo archive backfill,27.6,0.0,16.4,0.76
+2026,7,Benue,Open-Meteo archive backfill,30.4,0.8,58.0,0.43
+2026,7,Ebonyi,Open-Meteo archive backfill,29.2,13.0,67.0,0.09
+2026,7,Edo,Open-Meteo archive backfill,26.6,6.0,79.3,0.23
+2026,7,FCT,Open-Meteo archive backfill,29.5,0.3,45.3,0.51
+2026,7,Gombe,Open-Meteo archive backfill,29.6,0.0,11.7,0.86
+2026,7,Kaduna,Open-Meteo archive backfill,27.9,0.0,23.4,0.69
+2026,7,Kano,Open-Meteo archive backfill,28.7,0.0,17.0,0.78
+2026,7,Kebbi,Open-Meteo archive backfill,30.2,0.0,17.1,0.82
+2026,7,Kogi,Open-Meteo archive backfill,30.7,0.1,55.6,0.45
+2026,7,Kwara,Open-Meteo archive backfill,30.3,0.1,52.0,0.47
+2026,7,Nasarawa,Open-Meteo archive backfill,31.9,0.0,45.3,0.59
+2026,7,Ogun,Open-Meteo archive backfill,27.8,9.0,75.7,0.15
+2026,7,Ondo,Open-Meteo archive backfill,26.7,3.2,75.1,0.3
+2026,7,Plateau,Open-Meteo archive backfill,30.3,0.0,24.3,0.75
+2026,7,Taraba,Open-Meteo archive backfill,32.3,0.0,36.6,0.69

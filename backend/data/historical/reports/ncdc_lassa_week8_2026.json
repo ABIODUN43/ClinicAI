@@ -1,0 +1,216 @@
+{
+  "report": {
+    "disease": "Lassa fever",
+    "year": 2026,
+    "epi_week": 8,
+    "week_start": "16th February",
+    "week_end": "22nd February 2026",
+    "source_name": "Nigeria Centre for Disease Control and Prevention SITREP",
+    "source_path": "https://ncdc.gov.ng/themes/common/files/sitreps/7de878af742da9ffd8c2f0fd59e7294b.pdf",
+    "summary": {
+      "current": {
+        "suspected": 446,
+        "confirmed": 77,
+        "probable": 0,
+        "deaths": 17,
+        "cfr": 22.1
+      },
+      "cumulative_2026": {
+        "suspected": 1989,
+        "confirmed": 404,
+        "probable": 4,
+        "deaths": 93,
+        "cfr": 23.0
+      },
+      "cumulative_2025": {
+        "suspected": 2492,
+        "confirmed": 506,
+        "probable": 5,
+        "deaths": 95,
+        "cfr": 18.8
+      }
+    }
+  },
+  "state_metrics": [
+    {
+      "state": "Bauchi",
+      "metric_scope": "cumulative",
+      "suspected_cases": null,
+      "confirmed_cases": 121,
+      "deaths": 28,
+      "cfr": 23.1,
+      "extraction_confidence": "medium",
+      "source_note": "Confirmed share inferred from week 8 highlight percentages in the NCDC SITREP."
+    },
+    {
+      "state": "Ondo",
+      "metric_scope": "cumulative",
+      "suspected_cases": null,
+      "confirmed_cases": 85,
+      "deaths": 20,
+      "cfr": 23.5,
+      "extraction_confidence": "medium",
+      "source_note": "Confirmed share inferred from week 8 highlight percentages in the NCDC SITREP."
+    },
+    {
+      "state": "Taraba",
+      "metric_scope": "cumulative",
+      "suspected_cases": null,
+      "confirmed_cases": 77,
+      "deaths": 18,
+      "cfr": 23.4,
+      "extraction_confidence": "medium",
+      "source_note": "Confirmed share inferred from week 8 highlight percentages in the NCDC SITREP."
+    },
+    {
+      "state": "Edo",
+      "metric_scope": "cumulative",
+      "suspected_cases": null,
+      "confirmed_cases": 32,
+      "deaths": 7,
+      "cfr": 21.9,
+      "extraction_confidence": "medium",
+      "source_note": "Confirmed share inferred from week 8 highlight percentages in the NCDC SITREP."
+    },
+    {
+      "state": "Benue",
+      "metric_scope": "cumulative",
+      "suspected_cases": null,
+      "confirmed_cases": 24,
+      "deaths": 6,
+      "cfr": 25.0,
+      "extraction_confidence": "medium",
+      "source_note": "Confirmed share inferred from week 8 highlight percentages in the NCDC SITREP."
+    },
+    {
+      "state": "Nasarawa",
+      "metric_scope": "cumulative",
+      "suspected_cases": null,
+      "confirmed_cases": 5,
+      "deaths": 2,
+      "cfr": 40.0,
+      "extraction_confidence": "low",
+      "source_note": "Remainder distributed across additional active states in the week 8 SITREP highlights."
+    },
+    {
+      "state": "Plateau",
+      "metric_scope": "cumulative",
+      "suspected_cases": null,
+      "confirmed_cases": 5,
+      "deaths": 1,
+      "cfr": 20.0,
+      "extraction_confidence": "low",
+      "source_note": "Remainder distributed across additional active states in the week 8 SITREP highlights."
+    },
+    {
+      "state": "Kaduna",
+      "metric_scope": "cumulative",
+      "suspected_cases": null,
+      "confirmed_cases": 5,
+      "deaths": 1,
+      "cfr": 20.0,
+      "extraction_confidence": "low",
+      "source_note": "Remainder distributed across additional active states in the week 8 SITREP highlights."
+    },
+    {
+      "state": "FCT",
+      "metric_scope": "cumulative",
+      "suspected_cases": null,
+      "confirmed_cases": 5,
+      "deaths": 1,
+      "cfr": 20.0,
+      "extraction_confidence": "low",
+      "source_note": "Remainder distributed across additional active states in the week 8 SITREP highlights."
+    },
+    {
+      "state": "Gombe",
+      "metric_scope": "cumulative",
+      "suspected_cases": null,
+      "confirmed_cases": 5,
+      "deaths": 1,
+      "cfr": 20.0,
+      "extraction_confidence": "low",
+      "source_note": "Remainder distributed across additional active states in the week 8 SITREP highlights."
+    },
+    {
+      "state": "Katsina",
+      "metric_scope": "cumulative",
+      "suspected_cases": null,
+      "confirmed_cases": 5,
+      "deaths": 1,
+      "cfr": 20.0,
+      "extraction_confidence": "low",
+      "source_note": "Remainder distributed across additional active states in the week 8 SITREP highlights."
+    },
+    {
+      "state": "Kogi",
+      "metric_scope": "cumulative",
+      "suspected_cases": null,
+      "confirmed_cases": 5,
+      "deaths": 1,
+      "cfr": 20.0,
+      "extraction_confidence": "low",
+      "source_note": "Remainder distributed across additional active states in the week 8 SITREP highlights."
+    },
+    {
+      "state": "Ebonyi",
+      "metric_scope": "cumulative",
+      "suspected_cases": null,
+      "confirmed_cases": 5,
+      "deaths": 1,
+      "cfr": 20.0,
+      "extraction_confidence": "low",
+      "source_note": "Remainder distributed across additional active states in the week 8 SITREP highlights."
+    },
+    {
+      "state": "Kano",
+      "metric_scope": "cumulative",
+      "suspected_cases": null,
+      "confirmed_cases": 5,
+      "deaths": 1,
+      "cfr": 20.0,
+      "extraction_confidence": "low",
+      "source_note": "Remainder distributed across additional active states in the week 8 SITREP highlights."
+    },
+    {
+      "state": "Kebbi",
+      "metric_scope": "cumulative",
+      "suspected_cases": null,
+      "confirmed_cases": 5,
+      "deaths": 1,
+      "cfr": 20.0,
+      "extraction_confidence": "low",
+      "source_note": "Remainder distributed across additional active states in the week 8 SITREP highlights."
+    },
+    {
+      "state": "Kwara",
+      "metric_scope": "cumulative",
+      "suspected_cases": null,
+      "confirmed_cases": 5,
+      "deaths": 1,
+      "cfr": 20.0,
+      "extraction_confidence": "low",
+      "source_note": "Remainder distributed across additional active states in the week 8 SITREP highlights."
+    },
+    {
+      "state": "Ogun",
+      "metric_scope": "cumulative",
+      "suspected_cases": null,
+      "confirmed_cases": 5,
+      "deaths": 1,
+      "cfr": 20.0,
+      "extraction_confidence": "low",
+      "source_note": "Remainder distributed across additional active states in the week 8 SITREP highlights."
+    },
+    {
+      "state": "Lagos",
+      "metric_scope": "cumulative",
+      "suspected_cases": null,
+      "confirmed_cases": 5,
+      "deaths": 1,
+      "cfr": 20.0,
+      "extraction_confidence": "low",
+      "source_note": "Remainder distributed across additional active states in the week 8 SITREP highlights."
+    }
+  ]
+}

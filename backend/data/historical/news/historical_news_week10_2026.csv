@@ -1,0 +1,14 @@
+year,epi_week,state,source_name,news_signal_count,high_severity_news_count,rodent_risk_mentions,outbreak_mentions
+2026,10,Bauchi,Derived news-signal proxy from NCDC weekly state burden,24,14,13,10
+2026,10,Ondo,Derived news-signal proxy from NCDC weekly state burden,18,10,9,8
+2026,10,Edo,Derived news-signal proxy from NCDC weekly state burden,7,4,3,3
+2026,10,Taraba,Derived news-signal proxy from NCDC weekly state burden,17,10,9,7
+2026,10,Plateau,Derived news-signal proxy from NCDC weekly state burden,1,1,1,1
+2026,10,Ogun,Derived news-signal proxy from NCDC weekly state burden,1,1,1,1
+2026,10,Gombe,Derived news-signal proxy from NCDC weekly state burden,1,1,1,1
+2026,10,Lagos,Derived news-signal proxy from NCDC weekly state burden,1,1,1,1
+2026,10,Ebonyi,Derived news-signal proxy from NCDC weekly state burden,1,1,1,1
+2026,10,Benue,Derived news-signal proxy from NCDC weekly state burden,8,5,4,4
+2026,10,Nasarawa,Derived news-signal proxy from NCDC weekly state burden,1,1,1,1
+2026,10,Kogi,Derived news-signal proxy from NCDC weekly state burden,1,1,1,1
+2026,10,Oyo,Derived news-signal proxy from NCDC weekly state burden,0,0,0,0

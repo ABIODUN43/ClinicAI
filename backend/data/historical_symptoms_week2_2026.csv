@@ -1,0 +1,11 @@
+year,epi_week,state,source_name,fever_cases,headache_cases,vomiting_cases,weakness_cases,bleeding_cases,rodent_contact_cases,suspected_cases
+2026,2,Bauchi,Sample historical symptom import,28,19,10,16,7,11,18
+2026,2,Ondo,Sample historical symptom import,20,14,7,11,2,8,14
+2026,2,Edo,Sample historical symptom import,13,9,4,7,3,4,8
+2026,2,Taraba,Sample historical symptom import,9,6,3,4,0,3,6
+2026,2,Ogun,Sample historical symptom import,3,2,1,1,0,1,2
+2026,2,Gombe,Sample historical symptom import,2,1,0,1,0,1,1
+2026,2,Lagos,Sample historical symptom import,1,1,0,0,0,0,0
+2026,2,Ebonyi,Sample historical symptom import,4,3,1,2,0,1,2
+2026,2,Benue,Sample historical symptom import,3,2,1,1,0,1,1
+2026,2,Oyo,Sample historical symptom import,1,1,0,0,0,0,0

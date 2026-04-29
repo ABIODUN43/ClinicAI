@@ -1,0 +1,46 @@
+{
+  "report": {
+    "disease": "Lassa fever",
+    "year": 2026,
+    "epi_week": 0,
+    "week_start": "1st January",
+    "week_end": "7th January 2026",
+    "source_name": "Nigeria Centre for Disease Control and Prevention SITREP",
+    "source_path": "REPLACE_WITH_SOURCE_PDF_PATH",
+    "summary": {
+      "current": {
+        "suspected": 0,
+        "confirmed": 0,
+        "probable": 0,
+        "deaths": 0,
+        "cfr": 0.0
+      },
+      "cumulative_2026": {
+        "suspected": 0,
+        "confirmed": 0,
+        "probable": 0,
+        "deaths": 0,
+        "cfr": 0.0
+      },
+      "cumulative_2025": {
+        "suspected": 0,
+        "confirmed": 0,
+        "probable": 0,
+        "deaths": 0,
+        "cfr": 0.0
+      }
+    }
+  },
+  "state_metrics": [
+    {
+      "state": "Ondo",
+      "metric_scope": "cumulative",
+      "suspected_cases": 0,
+      "confirmed_cases": 0,
+      "deaths": 0,
+      "cfr": 0.0,
+      "extraction_confidence": "medium",
+      "source_note": "Fill from Table 3 / Figure 5."
+    }
+  ]
+}

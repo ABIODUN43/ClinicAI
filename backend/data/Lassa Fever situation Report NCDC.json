@@ -1,0 +1,109 @@
+{
+  "disease": "Lassa fever",
+  "year": 2026,
+  "epi_week": 2,
+  "week_start": "5th",
+  "week_end": "11th January",
+  "source_name": "Nigeria Centre for Disease Control and Prevention SITREP",
+  "source_path": "C:\\Users\\user\\Videos\\Lassa Fever situation Report NCDC.pdf",
+  "summary": {
+    "current": {
+      "suspected": 144,
+      "confirmed": 33,
+      "probable": 1,
+      "deaths": 2,
+      "cfr": 6.1
+    },
+    "cumulative_2026": {
+      "suspected": 248,
+      "confirmed": 54,
+      "probable": 1,
+      "deaths": 11,
+      "cfr": 20.4
+    },
+    "cumulative_2025": {
+      "suspected": 484,
+      "confirmed": 143,
+      "probable": 0,
+      "deaths": 22,
+      "cfr": 15.4
+    }
+  },
+  "state_metrics": [
+    {
+      "state": "Bauchi",
+      "metric_scope": "cumulative",
+      "suspected_cases": null,
+      "confirmed_cases": 25,
+      "deaths": 5,
+      "cfr": 20.0,
+      "extraction_confidence": "medium",
+      "source_note": "Confirmed counts inferred from highlight percentages in the SITREP."
+    },
+    {
+      "state": "Ondo",
+      "metric_scope": "cumulative",
+      "suspected_cases": null,
+      "confirmed_cases": 8,
+      "deaths": 2,
+      "cfr": 25.0,
+      "extraction_confidence": "low",
+      "source_note": "Confirmed counts distributed from remaining cumulative total using active-state highlights."
+    },
+    {
+      "state": "Edo",
+      "metric_scope": "cumulative",
+      "suspected_cases": null,
+      "confirmed_cases": 7,
+      "deaths": 1,
+      "cfr": 14.3,
+      "extraction_confidence": "low",
+      "source_note": "Confirmed counts distributed from remaining cumulative total using active-state highlights."
+    },
+    {
+      "state": "Taraba",
+      "metric_scope": "cumulative",
+      "suspected_cases": null,
+      "confirmed_cases": 7,
+      "deaths": 2,
+      "cfr": 28.6,
+      "extraction_confidence": "low",
+      "source_note": "Confirmed counts distributed from remaining cumulative total using active-state highlights."
+    },
+    {
+      "state": "Ogun",
+      "metric_scope": "cumulative",
+      "suspected_cases": null,
+      "confirmed_cases": 7,
+      "deaths": 1,
+      "cfr": 14.3,
+      "extraction_confidence": "low",
+      "source_note": "Confirmed counts distributed from remaining cumulative total using active-state highlights."
+    }
+  ],
+  "extraction_meta": {
+    "source": "text-inference",
+    "state_count": 5,
+    "confidence_counts": {
+      "medium": 1,
+      "low": 4
+    },
+    "low_confidence_states": [
+      "Ondo",
+      "Edo",
+      "Taraba",
+      "Ogun"
+    ],
+    "missing_suspected_states": [
+      "Bauchi",
+      "Ondo",
+      "Edo",
+      "Taraba",
+      "Ogun"
+    ],
+    "review_recommended": true,
+    "override_csv_path": "C:\\Users\\user\\Documents\\Codex\\2026-04-23-can-you-design-ui-ux\\backend\\data\\Lassa Fever situation Report NCDC_state_overrides.csv",
+    "review_csv_path": "C:\\Users\\user\\Documents\\Codex\\2026-04-23-can-you-design-ui-ux\\backend\\data\\Lassa Fever situation Report NCDC_state_review.csv",
+    "overrides_applied": false
+  }
+}

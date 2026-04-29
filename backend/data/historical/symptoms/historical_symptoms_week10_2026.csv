@@ -1,0 +1,14 @@
+year,epi_week,state,source_name,fever_cases,headache_cases,vomiting_cases,weakness_cases,bleeding_cases,rodent_contact_cases,suspected_cases
+2026,10,Bauchi,Derived clinic symptom proxy from NCDC weekly state burden,113,81,42,64,24,35,90
+2026,10,Ondo,Derived clinic symptom proxy from NCDC weekly state burden,85,61,32,48,18,26,67
+2026,10,Edo,Derived clinic symptom proxy from NCDC weekly state burden,32,23,12,19,7,10,26
+2026,10,Taraba,Derived clinic symptom proxy from NCDC weekly state burden,77,55,29,44,16,24,61
+2026,10,Plateau,Derived clinic symptom proxy from NCDC weekly state burden,5,4,2,3,1,2,4
+2026,10,Ogun,Derived clinic symptom proxy from NCDC weekly state burden,4,3,2,3,1,2,4
+2026,10,Gombe,Derived clinic symptom proxy from NCDC weekly state burden,5,4,2,3,1,2,4
+2026,10,Lagos,Derived clinic symptom proxy from NCDC weekly state burden,4,3,2,3,1,2,4
+2026,10,Ebonyi,Derived clinic symptom proxy from NCDC weekly state burden,4,3,2,3,1,2,4
+2026,10,Benue,Derived clinic symptom proxy from NCDC weekly state burden,36,26,14,21,8,12,29
+2026,10,Nasarawa,Derived clinic symptom proxy from NCDC weekly state burden,5,4,2,3,1,2,4
+2026,10,Kogi,Derived clinic symptom proxy from NCDC weekly state burden,5,4,2,3,1,2,4
+2026,10,Oyo,Derived clinic symptom proxy from NCDC weekly state burden,0,0,0,0,0,0,0
