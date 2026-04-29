@@ -315,6 +315,8 @@ This gives you a quick health signal directly inside GitHub before you deploy.
 The repository now also includes:
 
 - [render.yaml](C:\Users\user\Documents\Codex\2026-04-23-can-you-design-ui-ux\render.yaml)
+- [.env.render.example](C:\Users\user\Documents\Codex\2026-04-23-can-you-design-ui-ux\.env.render.example)
+- [DEPLOYMENT.md](C:\Users\user\Documents\Codex\2026-04-23-can-you-design-ui-ux\DEPLOYMENT.md)
 
 That file defines:
 
@@ -332,6 +334,8 @@ Important production note:
 
 - the current Render file keeps SQLite for easier prototype deployment
 - for stronger production reliability, switch `DATABASE_URL` to PostgreSQL before launch
+- use `.env.render.example` as the deployment environment checklist
+- follow `DEPLOYMENT.md` for the fastest GitHub-to-Render path
 
 ## Environment setup
 
