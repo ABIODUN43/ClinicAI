@@ -252,6 +252,7 @@ Deployment files:
 - [backend/Dockerfile](C:\Users\user\Documents\Codex\2026-04-23-can-you-design-ui-ux\backend\Dockerfile)
 - [Dockerfile.frontend](C:\Users\user\Documents\Codex\2026-04-23-can-you-design-ui-ux\Dockerfile.frontend)
 - [docker-compose.yml](C:\Users\user\Documents\Codex\2026-04-23-can-you-design-ui-ux\docker-compose.yml)
+- [render.yaml](C:\Users\user\Documents\Codex\2026-04-23-can-you-design-ui-ux\render.yaml)
 - [nginx.conf](C:\Users\user\Documents\Codex\2026-04-23-can-you-design-ui-ux\nginx.conf)
 - [.dockerignore](C:\Users\user\Documents\Codex\2026-04-23-can-you-design-ui-ux\.dockerignore)
 
@@ -293,6 +294,44 @@ http://localhost:8000/api/health
 - set a strong production `APP_JWT_SECRET`
 - use a real Google OAuth production origin instead of `localhost`
 - keep `VITE_API_URL` pointed at your deployed backend URL during frontend image build
+
+## GitHub Actions
+
+The repository now includes CI at:
+
+- [.github/workflows/ci.yml](C:\Users\user\Documents\Codex\2026-04-23-can-you-design-ui-ux\.github\workflows\ci.yml)
+
+What it checks on every push and pull request:
+
+- backend dependency install
+- backend Python compile validation
+- frontend dependency install
+- frontend production build
+
+This gives you a quick health signal directly inside GitHub before you deploy.
+
+## Render deployment hookup
+
+The repository now also includes:
+
+- [render.yaml](C:\Users\user\Documents\Codex\2026-04-23-can-you-design-ui-ux\render.yaml)
+
+That file defines:
+
+- one Python web service for the FastAPI backend
+- one static frontend service for the React app
+
+If you use Render:
+
+1. connect your GitHub repository
+2. choose `Blueprint` deployment
+3. select this repo
+4. set the missing secret environment variables in Render
+
+Important production note:
+
+- the current Render file keeps SQLite for easier prototype deployment
+- for stronger production reliability, switch `DATABASE_URL` to PostgreSQL before launch
 
 ## Environment setup
 

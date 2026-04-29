@@ -1,0 +1,55 @@
+name: ClinicAI Sentinel CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install backend dependencies
+        run: pip install -r backend/requirements.txt
+
+      - name: Compile backend Python files
+        run: |
+          python - <<'PY'
+          import pathlib
+          import py_compile
+
+          for path in pathlib.Path("backend").rglob("*.py"):
+              py_compile.compile(str(path), doraise=True)
+
+          print("Backend compile check passed.")
+          PY
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Build frontend
+        env:
+          VITE_API_URL: http://127.0.0.1:8000
+          VITE_GOOGLE_CLIENT_ID: test-client-id.apps.googleusercontent.com
+        run: npm run build
