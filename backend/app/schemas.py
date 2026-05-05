@@ -5,6 +5,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 class GoogleTokenRequest(BaseModel):
     credential: str
+    requested_role: str | None = Field(default=None, pattern="^(clinic|public_health|admin)$")
 
 
 class UserResponse(BaseModel):
@@ -12,6 +13,29 @@ class UserResponse(BaseModel):
     email: str
     image_url: str | None = None
     role: str
+
+
+class ContactPreferenceResponse(BaseModel):
+    id: int
+    name: str
+    email: str
+    role: str
+    location: str | None = None
+    sms_number: str | None = None
+    whatsapp_number: str | None = None
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ContactPreferenceCreate(BaseModel):
+    name: str = Field(min_length=2, max_length=120)
+    email: str = Field(min_length=5, max_length=150)
+    role: str = Field(pattern="^(clinic|public_health|admin)$")
+    location: str | None = Field(default=None, max_length=100)
+    sms_number: str | None = Field(default=None, max_length=40)
+    whatsapp_number: str | None = Field(default=None, max_length=40)
 
 
 class SessionResponse(BaseModel):
@@ -178,6 +202,10 @@ class SymptomReportCreate(BaseModel):
     suspected_cases: int = Field(ge=0)
     notes: str | None = None
     reported_by: str = Field(min_length=3, max_length=120)
+
+
+class SymptomReportUpdate(SymptomReportCreate):
+    pass
 
 
 class WeatherRecordResponse(BaseModel):

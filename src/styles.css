@@ -690,11 +690,11 @@ img {
   border-radius: 50%;
   background: conic-gradient(var(--danger) 0 34%, var(--warning) 34% 58%, var(--success) 58% 100%);
   position: relative;
+  display: grid;
+  place-items: center;
 }
 
-.donut::after {
-  content: "1,248\A Classifications";
-  white-space: pre;
+.donut-center {
   position: absolute;
   inset: 26px;
   background: var(--panel);
@@ -702,8 +702,17 @@ img {
   display: grid;
   place-items: center;
   text-align: center;
-  font: 700 1rem/1.35 "Space Grotesk", sans-serif;
   color: #314037;
+}
+
+.donut-center strong {
+  display: block;
+  font: 700 1.35rem/1.1 "Space Grotesk", sans-serif;
+}
+
+.donut-center span {
+  display: block;
+  font-size: 0.95rem;
 }
 
 .risk-meter {
@@ -1005,6 +1014,47 @@ img {
   color: #1d6a43;
   font-weight: 600;
   margin-top: 14px;
+}
+
+.trend-chart {
+  width: 100%;
+  height: auto;
+  display: block;
+  margin-top: 10px;
+}
+
+.trend-legend {
+  display: flex;
+  gap: 18px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.trend-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.trend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  display: inline-block;
+}
+
+.trend-dot.fever {
+  background: #c95b2f;
+}
+
+.trend-dot.bleeding {
+  background: #b21f3a;
+}
+
+.trend-dot.suspected {
+  background: #0d7a5f;
 }
 
 code {

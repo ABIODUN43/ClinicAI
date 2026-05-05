@@ -6,12 +6,14 @@ import {
   createNewsRecord,
   createNotification,
   createSignal,
+  deleteSymptomReport,
   createSymptomReport,
   createWeatherRecord,
   fetchAlertsData,
   fetchAlertsList,
   fetchAnalyticsData,
   fetchClinicReports,
+  fetchContactPreferences,
   fetchCurrentUser,
   fetchDatasetStatus,
   fetchHomeData,
@@ -30,11 +32,13 @@ import {
   loginWithGoogle,
   runLiveWeatherIngestion,
   runAutoDatasetRefresh,
+  saveContactPreference,
   sendQueuedEmailNotifications,
   sendQueuedSmsNotifications,
   sendQueuedWhatsAppNotifications,
   runTrustedNewsIngestion,
   trainModel,
+  updateSymptomReport,
   runPipelineAnalysis
 } from "./api";
 
@@ -63,6 +67,56 @@ function canAccess(user, area) {
   return capabilities[area] ?? true;
 }
 
+function normalizeNigeriaPhone(value) {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return "+234";
+  }
+  if (trimmed === "+") {
+    return "+234";
+  }
+  if (trimmed.startsWith("+234")) {
+    return `+234${trimmed.slice(4).replace(/\D/g, "")}`;
+  }
+  if (trimmed.startsWith("234")) {
+    return `+234${trimmed.slice(3).replace(/\D/g, "")}`;
+  }
+  if (trimmed.startsWith("0")) {
+    return `+234${trimmed.slice(1).replace(/\D/g, "")}`;
+  }
+  const digits = trimmed.replace(/\D/g, "");
+  return `+234${digits}`;
+}
+
+function readableError(error) {
+  if (!error) {
+    return "Something went wrong.";
+  }
+  if (typeof error === "string") {
+    return error;
+  }
+  if (typeof error.message === "string" && error.message) {
+    return error.message;
+  }
+  try {
+    return JSON.stringify(error);
+  } catch {
+    return "Something went wrong.";
+  }
+}
+
+function emptyAnalyticsData() {
+  return {
+    summary_metrics: [],
+    disease_probabilities: [],
+    classified_signals: [],
+    recommendations: [],
+    demo_scenario: {
+      copy: "Analytics is not part of the clinic role workspace."
+    }
+  };
+}
+
 function App() {
   const [session, setSession] = useState(() => loadStoredUser());
   const [homeData, setHomeData] = useState(null);
@@ -86,11 +140,13 @@ function App() {
 
     async function loadDashboard() {
       try {
-        const [profile, home, analytics, alerts] = await Promise.all([
-          fetchCurrentUser(session.access_token),
+        const profile = await fetchCurrentUser(session.access_token);
+        const [home, alerts, analytics] = await Promise.all([
           fetchHomeData(session.access_token),
-          fetchAnalyticsData(session.access_token),
-          fetchAlertsData(session.access_token)
+          fetchAlertsData(session.access_token),
+          canAccess(profile, "analytics")
+            ? fetchAnalyticsData(session.access_token)
+            : Promise.resolve(emptyAnalyticsData())
         ]);
 
         if (cancelled) {
@@ -165,15 +221,17 @@ function App() {
       <Sidebar user={user} />
       <main className="main">
         <Routes>
-          <Route path="/" element={<HomePage initials={initials} user={user} data={homeData} />} />
+          <Route path="/" element={<HomePage initials={initials} user={user} data={homeData} token={session.access_token} />} />
           <Route path="/risk-map" element={<RiskMapPage initials={initials} user={user} data={homeData} alertsData={alertsData} />} />
+          <Route path="/recommendations" element={<RecommendationsPage initials={initials} user={user} token={session.access_token} />} />
+          <Route path="/clinic-intake" element={<ClinicIntakePage initials={initials} user={user} token={session.access_token} />} />
           <Route path="/news" element={<NewsPage initials={initials} user={user} token={session.access_token} />} />
           <Route path="/weather" element={<WeatherPage initials={initials} user={user} token={session.access_token} />} />
           <Route
             path="/analytics"
             element={
               canAccess(user, "analytics")
-                ? <AnalyticsPage initials={initials} user={user} data={analyticsData} />
+                ? <AnalyticsPage initials={initials} user={user} data={analyticsData} token={session.access_token} />
                 : <RestrictedPage initials={initials} user={user} area="Analytics" />
             }
           />
@@ -211,7 +269,7 @@ function App() {
 
 function LoginScreen({ onLogin, error: upstreamError }) {
   const [error, setError] = useState("");
-  const [demoRole, setDemoRole] = useState("admin");
+  const [selectedRole, setSelectedRole] = useState("admin");
   const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
   const canUseGoogle = Boolean(clientId);
 
@@ -245,7 +303,7 @@ function LoginScreen({ onLogin, error: upstreamError }) {
         client_id: clientId,
         callback: async (response) => {
           try {
-            const session = await loginWithGoogle(response.credential);
+            const session = await loginWithGoogle(response.credential, selectedRole);
             onLogin(session);
           } catch (loginError) {
             setError(loginError.message);
@@ -274,7 +332,7 @@ function LoginScreen({ onLogin, error: upstreamError }) {
     return () => {
       mounted = false;
     };
-  }, [canUseGoogle, clientId, onLogin]);
+  }, [canUseGoogle, clientId, onLogin, selectedRole]);
 
   return (
     <div className="login-page">
@@ -311,20 +369,20 @@ function LoginScreen({ onLogin, error: upstreamError }) {
           type="button"
           onClick={() =>
             onLogin({
-              access_token: demoRole === "admin" ? "demo-session-admin" : demoRole === "public_health" ? "demo-session-public_health" : "demo-session-clinic",
+              access_token: selectedRole === "admin" ? "demo-session-admin" : selectedRole === "public_health" ? "demo-session-public_health" : "demo-session-clinic",
               user: {
-                email: "demo@clinicai-sentinel.local",
-                name: "Demo Analyst",
-                role: demoRole
+                email: selectedRole === "admin" ? "admin@clinicai-sentinel.local" : selectedRole === "public_health" ? "publichealth@clinicai-sentinel.local" : "clinic@clinicai-sentinel.local",
+                name: selectedRole === "admin" ? "Admin User" : selectedRole === "public_health" ? "Public Health Officer" : "Clinic User",
+                role: selectedRole
               }
             })
           }
         >
-          Continue to dashboard demo
+          Continue with local access
         </button>
         <label className="filter-field">
-          <span className="tiny muted">Demo role</span>
-          <select value={demoRole} onChange={(event) => setDemoRole(event.target.value)}>
+          <span className="tiny muted">Access role</span>
+          <select value={selectedRole} onChange={(event) => setSelectedRole(event.target.value)}>
             <option value="admin">Admin / Data Ops</option>
             <option value="public_health">Public Health Officer</option>
             <option value="clinic">Clinic User</option>
@@ -356,6 +414,8 @@ function Sidebar({ user }) {
         <AppNavLink end to="/">
           Home
         </AppNavLink>
+        <AppNavLink to="/recommendations">Recommendations</AppNavLink>
+        <AppNavLink to="/clinic-intake">Clinic Intake</AppNavLink>
         <AppNavLink to="/risk-map">Risk Map</AppNavLink>
         <AppNavLink to="/news">News Feed</AppNavLink>
         <AppNavLink to="/weather">Weather Feed</AppNavLink>
@@ -389,16 +449,17 @@ function AppNavLink({ children, ...props }) {
 }
 
 function BrandMark() {
-  const [imageReady, setImageReady] = useState(true);
+  const logoSources = ["/brand-virus-logo.png", "/brand-virus-logo.svg"];
+  const [logoIndex, setLogoIndex] = useState(0);
 
   return (
     <div className="brand-mark" aria-hidden="true">
-      {imageReady ? (
+      {logoIndex < logoSources.length ? (
         <img
           className="brand-logo-image"
-          src="/brand-virus-logo.png"
+          src={logoSources[logoIndex]}
           alt=""
-          onError={() => setImageReady(false)}
+          onError={() => setLogoIndex((current) => current + 1)}
         />
       ) : (
         <svg viewBox="0 0 120 120" className="brand-virus" role="presentation">
@@ -503,15 +564,120 @@ function Topbar({ title, subtitle, chipTone, chipText, user, initials }) {
   );
 }
 
-function HomePage({ initials, user, data }) {
+function NotificationContactCard({ token, user, title, description }) {
+  const role = getRole(user);
+  const [form, setForm] = useState({
+    name: user?.name || "",
+    email: user?.email || "",
+    location: "",
+    sms_number: "+234",
+    whatsapp_number: "+234"
+  });
+  const [status, setStatus] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadPreference() {
+      try {
+        const records = await fetchContactPreferences(token, {
+          email: user?.email,
+          role
+        });
+        if (cancelled || !records.length) {
+          return;
+        }
+        const latest = records[0];
+        setForm({
+          name: latest.name || user?.name || "",
+          email: latest.email || user?.email || "",
+          location: latest.location || "",
+          sms_number: latest.sms_number || "+234",
+          whatsapp_number: latest.whatsapp_number || "+234"
+        });
+      } catch {
+        // Keep the page usable even if preference lookup fails.
+      }
+    }
+
+    if (token && user?.email) {
+      loadPreference();
+    }
+
+    return () => {
+      cancelled = true;
+    };
+  }, [token, user?.email, user?.name, role]);
+
+  async function savePreference() {
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || "http://127.0.0.1:8000"}/api/contact-preferences`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          ...form,
+          role
+        })
+      });
+      const saved = await response.json();
+      if (!response.ok) {
+        throw new Error(readableError(saved?.detail));
+      }
+      const savedChannels = [
+        saved.sms_number ? "SMS" : null,
+        saved.whatsapp_number ? "WhatsApp" : null,
+        saved.email ? "email" : null
+      ].filter(Boolean);
+      setStatus(
+        savedChannels.length
+          ? `Submitted successfully. Saved for ${savedChannels.join(", ")} notifications.`
+          : "Submitted successfully."
+      );
+    } catch (error) {
+      setStatus(readableError(error));
+    }
+  }
+
+  return (
+    <article className="card">
+      <div className="card-header">
+        <div>
+          <h3>{title}</h3>
+          <p className="muted">{description}</p>
+        </div>
+      </div>
+      <div className="form-grid form-grid-2">
+        <FilterInput label="Name" value={form.name} onChange={(value) => setForm((current) => ({ ...current, name: value }))} placeholder="Your name" />
+        <FilterInput label="Location" value={form.location} onChange={(value) => setForm((current) => ({ ...current, location: value }))} placeholder="Ondo" />
+        <FilterInput label="Email" value={form.email} onChange={(value) => setForm((current) => ({ ...current, email: value }))} placeholder="your@email.com" />
+        <FilterInput label="SMS number" value={form.sms_number} onChange={(value) => setForm((current) => ({ ...current, sms_number: normalizeNigeriaPhone(value) }))} placeholder="+2348000000000" />
+        <FilterInput label="WhatsApp number" value={form.whatsapp_number} onChange={(value) => setForm((current) => ({ ...current, whatsapp_number: normalizeNigeriaPhone(value) }))} placeholder="+2348000000000" />
+      </div>
+      <div className="form-actions">
+        <button className="btn secondary" type="button" onClick={savePreference}>
+          Save contact details
+        </button>
+      </div>
+      <div className="footer-note">
+        Save your notification contacts here first. Live phone delivery still depends on a real SMS or WhatsApp provider being configured for the system.
+      </div>
+      {status ? <p className="success-copy">{status}</p> : null}
+    </article>
+  );
+}
+
+function HomePage({ initials, user, data, token }) {
   const role = getRole(user);
 
   if (role === "clinic") {
-    return <ClinicHomePage initials={initials} user={user} data={data} />;
+    return <ClinicHomePage initials={initials} user={user} data={data} token={token} />;
   }
 
   if (role === "public_health") {
-    return <PublicHealthHomePage initials={initials} user={user} data={data} />;
+    return <PublicHealthHomePage initials={initials} user={user} data={data} token={token} />;
   }
 
   return <AdminHomePage initials={initials} user={user} data={data} />;
@@ -663,6 +829,26 @@ function AdminHomePage({ initials, user, data }) {
       </section>
 
       <section className="grid-2">
+        <article className="card">
+          <div className="card-header">
+            <div>
+              <h3>Admin oversight</h3>
+              <p className="muted">A high-level view of platform operations for the admin role.</p>
+            </div>
+          </div>
+          <div className="disease-stats">
+            <StatBox value="Live" label="Ingestion status" />
+            <StatBox value="Daily" label="Automation cycle" />
+            <StatBox value="3" label="Priority channels active" />
+            <StatBox value="Ready" label="Model baseline state" />
+          </div>
+          <div className="feed">
+            <InfoRow title="Data layer" copy="Historical data, weather, symptom intake, and news ingestion are all part of the current operational stack." />
+            <InfoRow title="Decision layer" copy="Predictions, alerts, recommendations, and notification generation are available from one admin workspace." />
+            <InfoRow title="What to check next" copy="Use Data Ops for ingestion refresh, notifications, training status, and report export verification." />
+          </div>
+        </article>
+
         <article className="table-card">
           <div className="card-header">
             <div>
@@ -723,7 +909,7 @@ function AdminHomePage({ initials, user, data }) {
   );
 }
 
-function ClinicHomePage({ initials, user, data }) {
+function ClinicHomePage({ initials, user, data, token }) {
   return (
     <>
       <Topbar
@@ -749,11 +935,11 @@ function ClinicHomePage({ initials, user, data }) {
               alerts, and response steps.
             </div>
             <div className="hero-actions">
-              <NavLink className="btn primary" to="/alerts">
-                Open disease alerts
+              <NavLink className="btn primary" to="/clinic-intake">
+                Submit symptom intake
               </NavLink>
-              <NavLink className="btn secondary" to="/weather">
-                Check weather risk
+              <NavLink className="btn secondary" to="/recommendations">
+                Open recommendations
               </NavLink>
             </div>
           </div>
@@ -792,6 +978,7 @@ function ClinicHomePage({ initials, user, data }) {
             <InfoRow title="Fever and weakness" copy="Escalate repeated fever with unusual weakness, especially when clustered in the same community." />
             <InfoRow title="Vomiting and bleeding signs" copy="Treat these as high-priority indicators when paired with known outbreak history or rodent exposure." />
             <InfoRow title="Contact and exposure history" copy="Ask about rodent exposure, shared food storage, and contact with suspected infected persons." />
+            <InfoRow title="Next step in the app" copy="Open Clinic Intake to capture the symptom report that will feed surveillance analysis." />
           </div>
         </article>
 
@@ -807,6 +994,7 @@ function ClinicHomePage({ initials, user, data }) {
               <InfoRow key={`clinic-action-${item.title}`} title={item.title} copy={`Status: ${item.status}.`} />
             ))}
             <InfoRow title="Isolation readiness" copy="Prepare the isolation area and brief the duty team when alert pressure rises." />
+            <InfoRow title="Data capture" copy="Use Clinic Intake every day so symptom trends from your facility become part of the evidence base." />
           </div>
         </article>
       </section>
@@ -820,6 +1008,7 @@ function ClinicHomePage({ initials, user, data }) {
             </div>
           </div>
           <div className="feed">
+            <InfoRow title="Clinic Intake" copy="Use this page first to submit symptom counts from the clinic or community outreach team." />
             <InfoRow title="Disease Alerts" copy="Use this first when you need to compare red, amber, and green outcomes across diseases." />
             <InfoRow title="News Feed" copy="Check verified outbreak narratives and community signal context before escalation." />
             <InfoRow title="Weather Feed" copy="Use this to understand environmental pressure that may affect rodent-human contact risk." />
@@ -839,11 +1028,40 @@ function ClinicHomePage({ initials, user, data }) {
           </div>
         </article>
       </section>
+
+      <section className="grid-2">
+        <NotificationContactCard
+          token={token}
+          user={user}
+          title="Clinic notification contacts"
+          description="Save the clinic phone numbers you want to receive SMS or WhatsApp outbreak alerts on."
+        />
+      </section>
     </>
   );
 }
 
-function PublicHealthHomePage({ initials, user, data }) {
+function PublicHealthHomePage({ initials, user, data, token }) {
+  const focusOptions = data.priority_states.map((item) => item.state);
+  const [selectedState, setSelectedState] = useState(focusOptions[0] || "");
+  const selectedPriorityState = data.priority_states.find((item) => item.state === selectedState) || data.priority_states[0];
+  const regionalTrend = data.priority_states.slice(0, 5);
+  const maxSignalCount = Math.max(1, ...regionalTrend.map((item) => item.signalCount || item.signals || 0));
+  const situationBrief = selectedPriorityState
+    ? [
+        "ClinicAI Sentinel Public Health Situation Brief",
+        "",
+        `Location: ${selectedPriorityState.state}`,
+        `Disease: ${selectedPriorityState.disease}`,
+        `Alert level: ${selectedPriorityState.alert}`,
+        `Tracked signals: ${selectedPriorityState.signalCount || selectedPriorityState.signals}`,
+        `Recommended response: ${selectedPriorityState.action}`,
+        "",
+        `Interpretation: ${selectedPriorityState.state} remains a priority review location because the current surveillance evidence supports continued public-health monitoring.`,
+        "Operational note: Use this brief for internal coordination, field escalation, and fast stakeholder updates."
+      ].join("\n")
+    : "";
+
   return (
     <>
       <Topbar
@@ -939,6 +1157,115 @@ function PublicHealthHomePage({ initials, user, data }) {
         <article className="card">
           <div className="card-header">
             <div>
+              <h3>Regional focus selector</h3>
+              <p className="muted">Choose a state to read a cleaner public-health situation summary.</p>
+            </div>
+          </div>
+          <FilterField
+            label="Focus state"
+            value={selectedState}
+            onChange={setSelectedState}
+            options={focusOptions}
+          />
+          {selectedPriorityState ? (
+            <div className="footer-note">
+              <strong>{selectedPriorityState.state}</strong>
+              <div>Disease: {selectedPriorityState.disease}</div>
+              <div>Alert: {selectedPriorityState.alert}</div>
+              <div>Signals: {selectedPriorityState.signalCount || selectedPriorityState.signals}</div>
+              <div>Recommended action: {selectedPriorityState.action}</div>
+            </div>
+          ) : (
+            <div className="empty-state">No priority states are loaded yet.</div>
+          )}
+        </article>
+
+        <article className="card">
+          <div className="card-header">
+            <div>
+              <h3>Situation summary by location</h3>
+              <p className="muted">A public-health-ready interpretation for the currently selected state.</p>
+            </div>
+          </div>
+          {selectedPriorityState ? (
+            <div className="feed">
+              <InfoRow
+                title={`${selectedPriorityState.state} risk posture`}
+                copy={`${selectedPriorityState.alert} alert conditions are active for ${selectedPriorityState.disease}, with ${selectedPriorityState.signalCount || selectedPriorityState.signals} tracked supporting signals.`}
+              />
+              <InfoRow
+                title="Why this state stands out"
+                copy={`The current posture suggests cross-source agreement from surveillance evidence, so ${selectedPriorityState.state} should stay on the public-health watchlist.`}
+              />
+              <InfoRow
+                title="Recommended response cue"
+                copy={selectedPriorityState.action}
+              />
+            </div>
+          ) : (
+            <div className="empty-state">Select a state to view the public health summary.</div>
+          )}
+        </article>
+      </section>
+
+      <section className="grid-2">
+        <article className="card">
+          <div className="card-header">
+            <div>
+              <h3>Regional trend comparison</h3>
+              <p className="muted">A compact comparison of the most important states currently under surveillance.</p>
+            </div>
+          </div>
+          <div className="bars">
+            {regionalTrend.map((item) => {
+              const count = item.signalCount || item.signals || 0;
+              return (
+                <div className="bar-row" key={`regional-trend-${item.state}`}>
+                  <span>{item.state}</span>
+                  <div className="bar-track">
+                    <div className="bar-fill" style={{ width: `${(count / maxSignalCount) * 100}%` }}></div>
+                  </div>
+                  <strong>{count}</strong>
+                </div>
+              );
+            })}
+          </div>
+          <div className="legend">
+            <span className="legend-item"><span className="swatch brand"></span>Signal pressure by state</span>
+          </div>
+        </article>
+
+        <article className="card">
+          <div className="card-header">
+            <div>
+              <h3>Public health export view</h3>
+              <p className="muted">Generate a simple shareable situation brief for the currently selected location.</p>
+            </div>
+          </div>
+          {selectedPriorityState ? (
+            <>
+              <div className="footer-note">
+                <strong>{selectedPriorityState.state} situation brief</strong>
+                <div className="tiny" style={{ whiteSpace: "pre-line", marginTop: "10px" }}>{situationBrief}</div>
+              </div>
+              <div className="form-actions">
+                <button
+                  className="btn primary"
+                  type="button"
+                  onClick={() => downloadTextFile(`clinicai_${selectedPriorityState.state.toLowerCase()}_brief.txt`, situationBrief)}
+                >
+                  Download brief
+                </button>
+              </div>
+            </>
+          ) : (
+            <div className="empty-state">Choose a focus state to generate a situation brief.</div>
+          )}
+        </article>
+
+        <article className="card">
+          <div className="card-header">
+            <div>
               <h3>Public health summary</h3>
               <p className="muted">This role should see the surveillance story, not the data-engineering machinery.</p>
             </div>
@@ -948,12 +1275,127 @@ function PublicHealthHomePage({ initials, user, data }) {
             response decisions with understandable evidence from multiple sources.
           </div>
         </article>
+
+        <NotificationContactCard
+          token={token}
+          user={user}
+          title="Public health notification contacts"
+          description="Save the phone numbers and contact email that should receive public-health outbreak notifications."
+        />
       </section>
     </>
   );
 }
 
-function AnalyticsPage({ initials, user, data }) {
+function AnalyticsPage({ initials, user, data, token }) {
+  const [liveMetrics, setLiveMetrics] = useState({
+    predictions: [],
+    alerts: [],
+    signals: []
+  });
+  const [liveError, setLiveError] = useState("");
+
+  useEffect(() => {
+    let active = true;
+    async function loadAnalyticsDetails() {
+      if (!token) {
+        return;
+      }
+      try {
+        const [predictions, alerts, signals] = await Promise.all([
+          fetchPredictions(token, { disease: "Lassa fever", limit: 12 }),
+          fetchAlertsList(token, { disease: "Lassa fever", limit: 12 }),
+          fetchSignals(token, { disease: "Lassa fever", limit: 18 })
+        ]);
+        if (!active) {
+          return;
+        }
+        setLiveMetrics({
+          predictions: Array.isArray(predictions) ? predictions : [],
+          alerts: Array.isArray(alerts) ? alerts : [],
+          signals: Array.isArray(signals) ? signals : []
+        });
+        setLiveError("");
+      } catch (error) {
+        if (active) {
+          setLiveError(readableError(error));
+        }
+      }
+    }
+    loadAnalyticsDetails();
+    return () => {
+      active = false;
+    };
+  }, [token]);
+
+  const recentPredictions = useMemo(() => (
+    [...liveMetrics.predictions]
+      .sort((left, right) => new Date(right.created_at || 0) - new Date(left.created_at || 0))
+      .slice(0, 6)
+  ), [liveMetrics.predictions]);
+
+  const alertSplit = useMemo(() => {
+    const counts = { Red: 0, Amber: 0, Green: 0 };
+    liveMetrics.alerts.forEach((item) => {
+      const level = item.level || item.alert_level || item.classification;
+      if (level && counts[level] !== undefined) {
+        counts[level] += 1;
+      }
+    });
+    const total = counts.Red + counts.Amber + counts.Green;
+    const percent = (value) => (total ? Math.round((value / total) * 100) : 0);
+    return {
+      counts,
+      total,
+      red: percent(counts.Red),
+      amber: percent(counts.Amber),
+      green: percent(counts.Green)
+    };
+  }, [liveMetrics.alerts]);
+  const donutStyle = {
+    background: `conic-gradient(var(--danger) 0 ${alertSplit.red}%, var(--warning) ${alertSplit.red}% ${alertSplit.red + alertSplit.amber}%, var(--success) ${alertSplit.red + alertSplit.amber}% 100%)`
+  };
+
+  const regionalSignalPressure = useMemo(() => {
+    const grouped = new Map();
+    liveMetrics.signals.forEach((item) => {
+      const key = item.location || "Unknown";
+      const current = grouped.get(key) || { label: key, count: 0, confidenceTotal: 0 };
+      current.count += 1;
+      current.confidenceTotal += Number(item.confidence || 0);
+      grouped.set(key, current);
+    });
+    const values = Array.from(grouped.values())
+      .map((item) => ({
+        label: item.label,
+        count: item.count,
+        averageConfidence: item.count ? Math.round((item.confidenceTotal / item.count) * 100) : 0
+      }))
+      .sort((left, right) => right.count - left.count)
+      .slice(0, 5);
+    const maxCount = values[0]?.count || 1;
+    return values.map((item) => ({
+      ...item,
+      width: Math.max(18, Math.round((item.count / maxCount) * 100))
+    }));
+  }, [liveMetrics.signals]);
+
+  const topPrediction = recentPredictions[0];
+  const interpretationTitle = topPrediction
+    ? `${topPrediction.location || "Priority state"} at ${Math.round(Number(topPrediction.risk_score || 0) * 100)}%`
+    : "Live model interpretation will appear here";
+  const interpretationCopy = topPrediction
+    ? `The latest Lassa fever model output is ${topPrediction.risk_level || "under review"} for ${topPrediction.location || "the monitored location"}, supported by ${liveMetrics.signals.length} recent structured signal${liveMetrics.signals.length === 1 ? "" : "s"} and ${liveMetrics.alerts.length} active alert${liveMetrics.alerts.length === 1 ? "" : "s"}.`
+    : "As live predictions arrive, this card will summarize the highest-risk location, current score, and why the model response posture changed.";
+  const classifiedSignals = liveMetrics.signals.length
+    ? liveMetrics.signals.slice(0, 6).map((row) => ({
+        source: row.source_name || row.source || "Live signal",
+        location: row.location || "Unknown",
+        level: row.classification || "Amber",
+        confidence: `${Math.round(Number(row.confidence || 0) * 100)}%`
+      }))
+    : data.classified_signals;
+
   return (
     <>
       <Topbar
@@ -980,51 +1422,57 @@ function AnalyticsPage({ initials, user, data }) {
         <article className="card">
           <div className="card-header">
             <div>
-              <h3>Weekly trend curve</h3>
-              <p className="muted">This area is where your model prediction trend should live.</p>
+              <h3>Recent model output activity</h3>
+              <p className="muted">Live backend predictions ranked by latest risk score and location.</p>
             </div>
-            <div className="status-chip amber">Updated 08:40</div>
+            <div className="status-chip amber">
+              {recentPredictions[0]?.created_at ? `Updated ${formatDateTime(recentPredictions[0].created_at)}` : "Waiting for live predictions"}
+            </div>
           </div>
-          <div className="line-chart">
-            <svg viewBox="0 0 640 220" role="img" aria-label="Trend chart">
-              <defs>
-                <linearGradient id="trendFill" x1="0" x2="0" y1="0" y2="1">
-                  <stop offset="0%" stopColor="#0d7a5f" stopOpacity="0.28"></stop>
-                  <stop offset="100%" stopColor="#0d7a5f" stopOpacity="0.02"></stop>
-                </linearGradient>
-              </defs>
-              <path d="M0 180 C60 170, 120 160, 170 140 S280 78, 330 88 S420 120, 470 92 S570 30, 640 62 L640 220 L0 220 Z" fill="url(#trendFill)"></path>
-              <path d="M0 180 C60 170, 120 160, 170 140 S280 78, 330 88 S420 120, 470 92 S570 30, 640 62" fill="none" stroke="#0d7a5f" strokeWidth="5" strokeLinecap="round"></path>
-              <path d="M0 198 C70 196, 140 194, 210 166 S350 120, 420 142 S540 132, 640 122" fill="none" stroke="#d96c2f" strokeWidth="4" strokeLinecap="round" strokeDasharray="8 9"></path>
-              <g fill="#5b685f" fontSize="12">
-                <text x="0" y="214">Mon</text>
-                <text x="102" y="214">Tue</text>
-                <text x="205" y="214">Wed</text>
-                <text x="307" y="214">Thu</text>
-                <text x="410" y="214">Fri</text>
-                <text x="512" y="214">Sat</text>
-                <text x="608" y="214">Sun</text>
-              </g>
-            </svg>
-            <div className="legend">
-              <span className="legend-item"><span className="swatch brand"></span>Outbreak probability</span>
-              <span className="legend-item"><span className="swatch accent"></span>Noise-adjusted signal volume</span>
+          {recentPredictions.length ? (
+            <div className="bars">
+              {recentPredictions.map((item) => {
+                const score = Math.round(Number(item.risk_score || 0) * 100);
+                return (
+                  <div className="bar-row" key={`prediction-${item.id}`}>
+                    <span>{item.location || "Unknown"}</span>
+                    <div className="bar-track">
+                      <div className="bar-fill" style={{ width: `${Math.max(score, 4)}%` }}></div>
+                    </div>
+                    <strong>{score}%</strong>
+                  </div>
+                );
+              })}
             </div>
+          ) : (
+            <div className="empty-state">Live predictions have not been generated yet.</div>
+          )}
+          <div className="legend">
+            <span className="legend-item"><span className="swatch brand"></span>Latest risk score</span>
+            <span className="legend-item"><span className="swatch accent"></span>{recentPredictions.length} live prediction{recentPredictions.length === 1 ? "" : "s"}</span>
           </div>
         </article>
 
         <article className="card">
           <div className="card-header">
             <div>
-              <h3>Classification split</h3>
-              <p className="muted">A quick way to understand red, amber, and green outcomes.</p>
+              <h3>Live classification split</h3>
+              <p className="muted">A backend-driven read of current red, amber, and green alert posture.</p>
             </div>
           </div>
-          <div className="donut"></div>
+          <div className="donut" style={donutStyle}>
+            <div className="donut-center">
+              <strong>{alertSplit.total || 0}</strong>
+              <span>Classifications</span>
+            </div>
+          </div>
           <div className="legend">
-            <span className="legend-item"><span className="swatch danger"></span>Red alert: 34%</span>
-            <span className="legend-item"><span className="swatch warning"></span>Amber alert: 24%</span>
-            <span className="legend-item"><span className="swatch success"></span>Green alert: 42%</span>
+            <span className="legend-item"><span className="swatch danger"></span>Red alert: {alertSplit.red}%</span>
+            <span className="legend-item"><span className="swatch warning"></span>Amber alert: {alertSplit.amber}%</span>
+            <span className="legend-item"><span className="swatch success"></span>Green alert: {alertSplit.green}%</span>
+          </div>
+          <div className="footer-note">
+            {alertSplit.total ? `${alertSplit.total} live alert classifications are currently informing this split.` : "Generate live alerts to replace the placeholder split with active backend counts."}
           </div>
         </article>
       </section>
@@ -1053,17 +1501,31 @@ function AnalyticsPage({ initials, user, data }) {
         <article className="card">
           <div className="card-header">
             <div>
-              <h3>Risk interpretation</h3>
-              <p className="muted">Keep the insight human-readable, not only technical.</p>
+              <h3>Regional signal pressure</h3>
+              <p className="muted">Signal clustering by location based on live classified evidence.</p>
             </div>
-            <div className="status-chip red">High watch</div>
+            <div className={`status-chip ${topPrediction?.risk_level?.toLowerCase() === "low" ? "green" : topPrediction?.risk_level?.toLowerCase() === "medium" ? "amber" : "red"}`}>
+              {topPrediction?.risk_level || "Watch"}
+            </div>
           </div>
-          <div className="risk-meter">
-            <div className="meter"></div>
-            <p className="muted">
-              The model sees an elevated chance of an active Lassa fever situation based on location clustering, symptom-related language frequency, and repeated confirmation from high-trust Nigerian news sources.
-            </p>
-            <div className="footer-note">{data.demo_scenario.copy}</div>
+          {regionalSignalPressure.length ? (
+            <div className="bars">
+              {regionalSignalPressure.map((item) => (
+                <div className="bar-row" key={`signal-pressure-${item.label}`}>
+                  <span>{item.label}</span>
+                  <div className="bar-track">
+                    <div className="bar-fill" style={{ width: `${item.width}%` }}></div>
+                  </div>
+                  <strong>{item.count}</strong>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="empty-state">Live signal clustering will appear here after ingestion and classification.</div>
+          )}
+          <div className="feed">
+            <InfoRow title={interpretationTitle} copy={interpretationCopy} />
+            <InfoRow title="Average signal confidence" copy={regionalSignalPressure.length ? `${regionalSignalPressure[0].label} currently leads this view with ${regionalSignalPressure[0].averageConfidence}% average confidence across its recent signal set.` : data.demo_scenario.copy} />
           </div>
         </article>
       </section>
@@ -1086,7 +1548,7 @@ function AnalyticsPage({ initials, user, data }) {
               </tr>
             </thead>
             <tbody>
-              {data.classified_signals.map((row) => (
+              {classifiedSignals.map((row) => (
                 <tr key={`${row.source}-${row.location}`}>
                   <td>{row.source}</td>
                   <td>{row.location}</td>
@@ -1114,6 +1576,7 @@ function AnalyticsPage({ initials, user, data }) {
           </div>
         </article>
       </section>
+      {liveError ? <div className="footer-note">{liveError}</div> : null}
     </>
   );
 }
@@ -1600,6 +2063,636 @@ function WeatherPage({ initials, user, token }) {
   );
 }
 
+function RecommendationsPage({ initials, user, token }) {
+  const [recommendations, setRecommendations] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadRecommendations() {
+      try {
+        const result = await fetchRecommendations(token, { limit: 24 });
+        if (cancelled) {
+          return;
+        }
+        setRecommendations(result);
+        setError("");
+      } catch (fetchError) {
+        if (!cancelled) {
+          setError(readableError(fetchError));
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    }
+
+    loadRecommendations();
+    return () => {
+      cancelled = true;
+    };
+  }, [token]);
+
+  return (
+    <>
+      <Topbar
+        title="Operational recommendations for the current surveillance picture"
+        subtitle="Recommendations"
+        chipTone="green"
+        chipText={loading ? "Loading" : `${recommendations.length} active items`}
+        user={user}
+        initials={initials}
+      />
+
+      <section className="grid-2">
+        <article className="card">
+          <div className="card-header">
+            <div>
+              <h3>How to use this page</h3>
+              <p className="muted">Every role can use the recommendation layer to understand the next best action quickly.</p>
+            </div>
+          </div>
+          <div className="feed">
+            <InfoRow title="Clinic users" copy="Use these items as the immediate action list after symptom screening or when an alert is raised." />
+            <InfoRow title="Public health officers" copy="Use the items to coordinate escalation, screening guidance, and regional communication." />
+            <InfoRow title="Admin / Data Ops" copy="Use the page to confirm that the action layer being generated by the system is practical and clear." />
+          </div>
+          <div className="footer-note">
+            ClinicAI Sentinel should not stop at a risk label. This page keeps the response actions visible to every user role.
+          </div>
+        </article>
+
+        <article className="table-card">
+          <div className="card-header">
+            <div>
+              <h3>Priority actions</h3>
+              <p className="muted">The highest-signal recommendations currently generated by the backend.</p>
+            </div>
+          </div>
+          {error ? <p className="auth-error">{error}</p> : null}
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Title</th>
+                <th>Location</th>
+                <th>Priority</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {recommendations.map((item) => (
+                <tr key={item.id}>
+                  <td>{item.title}</td>
+                  <td>{item.location}</td>
+                  <td><span className={`tag ${item.priority === "High" ? "red" : item.priority === "Medium" ? "amber" : "green"}`}>{item.priority}</span></td>
+                  <td>{item.status}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </article>
+      </section>
+
+      <section className="grid-2">
+        <article className="list-card">
+          <div className="card-header">
+            <div>
+              <h3>Recommendation details</h3>
+              <p className="muted">Use this list when teams need the full wording rather than a compact table.</p>
+            </div>
+          </div>
+          <div className="feed">
+            {recommendations.map((item) => (
+              <div className="insight-item" key={`recommendation-copy-${item.id}`}>
+                <div>
+                  <div className="signal-title">{item.title}</div>
+                  <div className="muted">{item.description}</div>
+                  <div className="tiny muted">{item.location} | {item.category}</div>
+                </div>
+                <span className={`tag ${item.priority === "High" ? "red" : item.priority === "Medium" ? "amber" : "green"}`}>{item.priority}</span>
+              </div>
+            ))}
+          </div>
+        </article>
+
+        <article className="card">
+          <div className="card-header">
+            <div>
+              <h3>Recommended workflow</h3>
+              <p className="muted">This is the cleanest path for clinic users to contribute useful frontline data.</p>
+            </div>
+          </div>
+          <div className="feed">
+            <InfoRow title="1. Submit symptoms" copy="Open Clinic Intake and record fever, headache, vomiting, weakness, bleeding, and contact history." />
+            <InfoRow title="2. Let the system learn" copy="Those symptom entries land in the structured symptom-report dataset for surveillance analysis." />
+            <InfoRow title="3. Review response actions" copy="Return here to see the current action layer the system recommends for healthcare teams." />
+          </div>
+        </article>
+      </section>
+    </>
+  );
+}
+
+function ClinicIntakePage({ initials, user, token }) {
+  const [form, setForm] = useState({
+    facility_name: user?.name ? `${user.name} facility` : "ClinicAI Sentinel Clinic",
+    location: "Ondo",
+    disease: "Lassa fever",
+    report_date: new Date().toISOString().slice(0, 16),
+    fever_cases: "0",
+    headache_cases: "0",
+    vomiting_cases: "0",
+    weakness_cases: "0",
+    bleeding_cases: "0",
+    contact_history_cases: "0",
+    suspected_cases: "0",
+    notes: "",
+    reported_by: user?.name || "Clinic user"
+  });
+  const [records, setRecords] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [status, setStatus] = useState("");
+  const [error, setError] = useState("");
+  const [pipelineResult, setPipelineResult] = useState(null);
+  const [editingReportId, setEditingReportId] = useState(null);
+  const [trendFrom, setTrendFrom] = useState("");
+  const [trendTo, setTrendTo] = useState("");
+  const myRecords = records.filter((item) => (item.reported_by || "").toLowerCase() === (user?.name || "").toLowerCase());
+  const mySummary = myRecords.reduce(
+    (summary, item) => ({
+      reports: summary.reports + 1,
+      fever: summary.fever + item.fever_cases,
+      bleeding: summary.bleeding + item.bleeding_cases,
+      suspected: summary.suspected + item.suspected_cases
+    }),
+    { reports: 0, fever: 0, bleeding: 0, suspected: 0 }
+  );
+  const trendPoints = [...myRecords]
+    .sort((left, right) => new Date(left.report_date).getTime() - new Date(right.report_date).getTime())
+    .slice(-6);
+  const filteredTrendPoints = trendPoints.filter((item) => {
+    const itemDate = new Date(item.report_date).getTime();
+    const fromDate = trendFrom ? new Date(trendFrom).getTime() : null;
+    const toDate = trendTo ? new Date(trendTo).getTime() : null;
+    if (fromDate && itemDate < fromDate) {
+      return false;
+    }
+    if (toDate && itemDate > toDate) {
+      return false;
+    }
+    return true;
+  });
+  const maxTrendValue = Math.max(
+    1,
+    ...filteredTrendPoints.flatMap((item) => [item.fever_cases, item.bleeding_cases, item.suspected_cases])
+  );
+  const chartWidth = 420;
+  const chartHeight = 180;
+  const chartPadding = 20;
+
+  function buildTrendPolyline(metric) {
+    if (!filteredTrendPoints.length) {
+      return "";
+    }
+    return filteredTrendPoints
+      .map((item, index) => {
+        const x = chartPadding + (filteredTrendPoints.length === 1 ? 0 : (index * (chartWidth - chartPadding * 2)) / (filteredTrendPoints.length - 1));
+        const y =
+          chartHeight -
+          chartPadding -
+          ((item[metric] || 0) / maxTrendValue) * (chartHeight - chartPadding * 2);
+        return `${x},${y}`;
+      })
+      .join(" ");
+  }
+
+  async function loadRecords() {
+    try {
+      const result = await fetchSymptomReports(token, { disease: "Lassa fever", limit: 10 });
+      setRecords(result);
+      setError("");
+    } catch (fetchError) {
+      setError(readableError(fetchError));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    loadRecords();
+  }, [token]);
+
+  function loadRecordIntoForm(record) {
+    setEditingReportId(record.id);
+    setForm({
+      facility_name: record.facility_name,
+      location: record.location,
+      disease: record.disease,
+      report_date: new Date(record.report_date).toISOString().slice(0, 16),
+      fever_cases: String(record.fever_cases),
+      headache_cases: String(record.headache_cases),
+      vomiting_cases: String(record.vomiting_cases),
+      weakness_cases: String(record.weakness_cases),
+      bleeding_cases: String(record.bleeding_cases),
+      contact_history_cases: String(record.contact_history_cases),
+      suspected_cases: String(record.suspected_cases),
+      notes: record.notes || "",
+      reported_by: record.reported_by
+    });
+    setStatus("Editing existing symptom report.");
+    setError("");
+  }
+
+  function resetFormForNewEntry() {
+    setEditingReportId(null);
+    setForm((current) => ({
+      ...current,
+      report_date: new Date().toISOString().slice(0, 16),
+      fever_cases: "0",
+      headache_cases: "0",
+      vomiting_cases: "0",
+      weakness_cases: "0",
+      bleeding_cases: "0",
+      contact_history_cases: "0",
+      suspected_cases: "0",
+      notes: "",
+      reported_by: user?.name || "Clinic user"
+    }));
+  }
+
+  async function removeReport(report) {
+    const shouldDelete = window.confirm(`Delete the symptom report from ${formatDateTime(report.report_date)} for ${report.location}?`);
+    if (!shouldDelete) {
+      return;
+    }
+
+    setSaving(true);
+    setStatus("");
+    setError("");
+    try {
+      await deleteSymptomReport(token, report.id);
+      if (editingReportId === report.id) {
+        resetFormForNewEntry();
+      }
+      setPipelineResult(null);
+      setStatus("Symptom report deleted successfully.");
+      await loadRecords();
+    } catch (deleteError) {
+      setError(readableError(deleteError));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function submitIntake() {
+    setSaving(true);
+    setStatus("");
+    setError("");
+    try {
+      const payload = {
+        ...form,
+        fever_cases: Number(form.fever_cases),
+        headache_cases: Number(form.headache_cases),
+        vomiting_cases: Number(form.vomiting_cases),
+        weakness_cases: Number(form.weakness_cases),
+        bleeding_cases: Number(form.bleeding_cases),
+        contact_history_cases: Number(form.contact_history_cases),
+        suspected_cases: Number(form.suspected_cases)
+      };
+      if (editingReportId) {
+        await updateSymptomReport(token, editingReportId, payload);
+      } else {
+        await createSymptomReport(token, payload);
+      }
+      const analysisResult = await runPipelineAnalysis(token, {
+        disease: form.disease,
+        location: form.location,
+        analyst: user?.name || "Clinic user"
+      });
+      setPipelineResult(analysisResult);
+      setStatus(
+        `${editingReportId ? "Symptom report updated successfully." : "Symptom report submitted successfully."} ${analysisResult.prediction.risk_level} risk detected for ${analysisResult.prediction.location}.`
+      );
+      resetFormForNewEntry();
+      await loadRecords();
+    } catch (submitError) {
+      setError(readableError(submitError));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <>
+      <Topbar
+        title="Capture symptom data from clinics and communities"
+        subtitle="Clinic intake"
+        chipTone="red"
+        chipText={saving ? "Submitting" : "Data collection"}
+        user={user}
+        initials={initials}
+      />
+
+      <section className="grid-2">
+        <article className="card">
+          <div className="card-header">
+            <div>
+              <h3>{editingReportId ? "Edit symptom report" : "Symptom intake form"}</h3>
+              <p className="muted">This is the clinic workflow for turning frontline symptoms into data the system can use.</p>
+            </div>
+          </div>
+          <div className="form-grid form-grid-2">
+            <FilterInput label="Facility / clinic" value={form.facility_name} onChange={(value) => setForm((current) => ({ ...current, facility_name: value }))} placeholder="Clinic name" />
+            <FilterInput label="Location" value={form.location} onChange={(value) => setForm((current) => ({ ...current, location: value }))} placeholder="State or LGA" />
+            <FilterInput label="Disease" value={form.disease} onChange={(value) => setForm((current) => ({ ...current, disease: value }))} placeholder="Lassa fever" />
+            <FilterInput label="Report date" type="datetime-local" value={form.report_date} onChange={(value) => setForm((current) => ({ ...current, report_date: value }))} placeholder="" />
+            <FilterInput label="Fever cases" type="number" value={form.fever_cases} onChange={(value) => setForm((current) => ({ ...current, fever_cases: value }))} placeholder="0" />
+            <FilterInput label="Headache cases" type="number" value={form.headache_cases} onChange={(value) => setForm((current) => ({ ...current, headache_cases: value }))} placeholder="0" />
+            <FilterInput label="Vomiting cases" type="number" value={form.vomiting_cases} onChange={(value) => setForm((current) => ({ ...current, vomiting_cases: value }))} placeholder="0" />
+            <FilterInput label="Weakness cases" type="number" value={form.weakness_cases} onChange={(value) => setForm((current) => ({ ...current, weakness_cases: value }))} placeholder="0" />
+            <FilterInput label="Bleeding cases" type="number" value={form.bleeding_cases} onChange={(value) => setForm((current) => ({ ...current, bleeding_cases: value }))} placeholder="0" />
+            <FilterInput label="Contact history cases" type="number" value={form.contact_history_cases} onChange={(value) => setForm((current) => ({ ...current, contact_history_cases: value }))} placeholder="0" />
+            <FilterInput label="Suspected cases" type="number" value={form.suspected_cases} onChange={(value) => setForm((current) => ({ ...current, suspected_cases: value }))} placeholder="0" />
+            <FilterInput label="Reported by" value={form.reported_by} onChange={(value) => setForm((current) => ({ ...current, reported_by: value }))} placeholder="Reporter name" />
+          </div>
+          <label className="filter-field">
+            <span className="tiny muted">Notes</span>
+            <textarea
+              value={form.notes}
+              onChange={(event) => setForm((current) => ({ ...current, notes: event.target.value }))}
+              placeholder="Record anything important about rodent exposure, unusual clustering, or community context."
+            />
+          </label>
+          <div className="form-actions">
+            <button className="btn primary" type="button" disabled={saving} onClick={submitIntake}>
+              {saving ? "Submitting..." : editingReportId ? "Update symptom report" : "Submit symptom report"}
+            </button>
+            {editingReportId ? (
+              <button className="btn secondary" type="button" disabled={saving} onClick={resetFormForNewEntry}>
+                Cancel edit
+              </button>
+            ) : null}
+          </div>
+          {status ? <p className="success-copy">{status}</p> : null}
+          {error ? <p className="auth-error">{error}</p> : null}
+          <div className="footer-note">
+            These symptom entries become structured surveillance records for later analysis, historical backfill, and model improvement.
+          </div>
+          {pipelineResult ? (
+            <div className="footer-note">
+              <strong>Latest clinic analysis</strong>
+              <div>{pipelineResult.summary}</div>
+              <div className="tiny">
+                Prediction: {pipelineResult.prediction.risk_level} ({Math.round(pipelineResult.prediction.risk_score * 100)}%) | Alert: {pipelineResult.alert.level}
+              </div>
+              <div className="tiny">
+                Next actions: {pipelineResult.recommendations.map((item) => item.title).join(" | ")}
+              </div>
+            </div>
+          ) : null}
+        </article>
+
+        <article className="card">
+          <div className="card-header">
+            <div>
+              <h3>Why this matters</h3>
+              <p className="muted">The clinic role should contribute data, not just view dashboards.</p>
+            </div>
+          </div>
+          <div className="feed">
+            <InfoRow title="Frontline data capture" copy="This page records the symptom pressure healthcare workers are actually seeing on the ground." />
+            <InfoRow title="Model input" copy="Fever, vomiting, weakness, bleeding, contact history, and suspected case counts feed the surveillance evidence base." />
+            <InfoRow title="Better recommendations" copy="As more symptom reports come in, the action layer becomes more grounded in clinical reality." />
+          </div>
+        </article>
+      </section>
+
+      <section className="grid-2">
+        <article className="card">
+          <div className="card-header">
+            <div>
+              <h3>Clinic reporting summary</h3>
+              <p className="muted">A fast snapshot of what this clinic user has contributed so far.</p>
+            </div>
+          </div>
+          <div className="disease-stats">
+            <StatBox value={mySummary.reports} label="Reports submitted" />
+            <StatBox value={mySummary.fever} label="Fever cases logged" />
+            <StatBox value={mySummary.bleeding} label="Bleeding cases logged" />
+            <StatBox value={mySummary.suspected} label="Suspected cases logged" />
+          </div>
+          <div className="feed">
+            <InfoRow title="Clinic value" copy="This summary helps healthcare workers confirm that the system is learning from their repeated submissions over time." />
+            <InfoRow title="Operational reading" copy="Watch the fever, bleeding, and suspected-case totals closely because they are the strongest frontline signals in this intake flow." />
+          </div>
+        </article>
+
+        <article className="card">
+          <div className="card-header">
+            <div>
+              <h3>Latest clinic impact</h3>
+              <p className="muted">Shows the most recent model and alert output generated from clinic-side reporting.</p>
+            </div>
+          </div>
+          {pipelineResult ? (
+            <>
+              <div className="disease-stats">
+                <StatBox value={pipelineResult.prediction.risk_level} label="Predicted risk" />
+                <StatBox value={`${Math.round(pipelineResult.prediction.risk_score * 100)}%`} label="Risk score" />
+                <StatBox value={pipelineResult.alert.level} label="Alert level" />
+                <StatBox value={pipelineResult.recommendations.length} label="Actions generated" />
+              </div>
+              <div className="footer-note">
+                {pipelineResult.summary}
+              </div>
+            </>
+          ) : (
+            <div className="footer-note">
+              Submit a clinic symptom report to generate a fresh risk assessment, alert level, and action set from the current data.
+            </div>
+          )}
+        </article>
+      </section>
+
+      <section className="grid-2">
+        <article className="table-card">
+          <div className="card-header">
+            <div>
+              <h3>Recent clinic symptom submissions</h3>
+              <p className="muted">The latest structured symptom reports currently saved to the backend.</p>
+            </div>
+            <div className="status-chip green">{loading ? "Loading" : `${records.length} records`}</div>
+          </div>
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Facility</th>
+                <th>Location</th>
+                <th>Fever</th>
+                <th>Bleeding</th>
+                <th>Suspected</th>
+              </tr>
+            </thead>
+            <tbody>
+              {records.map((item) => (
+                <tr key={item.id}>
+                  <td>{item.facility_name}</td>
+                  <td>{item.location}</td>
+                  <td>{item.fever_cases}</td>
+                  <td>{item.bleeding_cases}</td>
+                  <td>{item.suspected_cases}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </article>
+
+        <article className="list-card">
+          <div className="card-header">
+            <div>
+              <h3>What happens after submission</h3>
+              <p className="muted">The ClinicAI Sentinel flow after a symptom report is saved.</p>
+            </div>
+          </div>
+          <div className="feed">
+            <InfoRow title="Stored in backend" copy="The symptom report becomes part of the structured surveillance dataset immediately." />
+            <InfoRow title="Combined with weather and news" copy="The system can combine clinic symptoms with weather risk and verified news signals." />
+            <InfoRow title="Used for prediction and action" copy="Those combined signals can feed prediction, alert generation, and the recommendation layer." />
+          </div>
+        </article>
+      </section>
+
+      <section className="grid-2">
+        <article className="table-card">
+          <div className="card-header">
+            <div>
+              <h3>My submitted reports</h3>
+              <p className="muted">A clinic-focused history of the reports submitted by your current signed-in role.</p>
+            </div>
+            <div className="status-chip amber">{myRecords.length} mine</div>
+          </div>
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Location</th>
+                <th>Fever</th>
+                <th>Bleeding</th>
+                <th>Reported by</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {myRecords.map((item) => (
+                <tr key={`my-report-${item.id}`}>
+                  <td>{formatDateTime(item.report_date)}</td>
+                  <td>{item.location}</td>
+                  <td>{item.fever_cases}</td>
+                  <td>{item.bleeding_cases}</td>
+                  <td>{item.reported_by}</td>
+                  <td>
+                    <div className="form-actions">
+                      <button className="btn secondary" type="button" onClick={() => loadRecordIntoForm(item)}>
+                        Edit
+                      </button>
+                      <button className="btn secondary" type="button" onClick={() => removeReport(item)}>
+                        Delete
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </article>
+
+        <article className="card">
+          <div className="card-header">
+            <div>
+              <h3>Your intake summary</h3>
+              <p className="muted">A quick readout of how this clinic user is contributing data into the system.</p>
+            </div>
+          </div>
+          <div className="feed">
+            <InfoRow title="Reports submitted" copy={`${myRecords.length} recent symptom report${myRecords.length === 1 ? "" : "s"} are currently linked to ${user?.name || "this clinic user"}.`} />
+            <InfoRow title="Why this matters" copy="This gives clinic users feedback that their data is not disappearing after submission and is part of the surveillance evidence chain." />
+            <InfoRow title="Best next habit" copy="Keep submitting new symptom counts as cases change so the model and recommendations reflect what the clinic is actually seeing." />
+          </div>
+          <div className="footer-note">
+            A strong clinic workflow should always answer two questions clearly: did my data save, and can I see my reporting history?
+          </div>
+        </article>
+      </section>
+
+      <section className="grid-2">
+        <article className="card">
+          <div className="card-header">
+            <div>
+              <h3>Clinic symptom trend</h3>
+              <p className="muted">A simple over-time view of what this clinic user has been reporting.</p>
+            </div>
+          </div>
+          <div className="form-grid form-grid-2">
+            <FilterInput label="Trend from" type="datetime-local" value={trendFrom} onChange={setTrendFrom} placeholder="" />
+            <FilterInput label="Trend to" type="datetime-local" value={trendTo} onChange={setTrendTo} placeholder="" />
+          </div>
+          {filteredTrendPoints.length ? (
+            <div className="footer-note">
+              <svg viewBox={`0 0 ${chartWidth} ${chartHeight}`} className="trend-chart" role="img" aria-label="Clinic symptom trend chart">
+                <line x1={chartPadding} y1={chartHeight - chartPadding} x2={chartWidth - chartPadding} y2={chartHeight - chartPadding} stroke="rgba(92,74,39,0.25)" strokeWidth="2" />
+                <line x1={chartPadding} y1={chartPadding} x2={chartPadding} y2={chartHeight - chartPadding} stroke="rgba(92,74,39,0.2)" strokeWidth="2" />
+                <polyline fill="none" stroke="#c95b2f" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" points={buildTrendPolyline("fever_cases")} />
+                <polyline fill="none" stroke="#b21f3a" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" points={buildTrendPolyline("bleeding_cases")} />
+                <polyline fill="none" stroke="#0d7a5f" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" points={buildTrendPolyline("suspected_cases")} />
+              </svg>
+              <div className="trend-legend">
+                <span><span className="trend-dot fever"></span> Fever</span>
+                <span><span className="trend-dot bleeding"></span> Bleeding</span>
+                <span><span className="trend-dot suspected"></span> Suspected</span>
+              </div>
+            </div>
+          ) : (
+            <div className="empty-state">No clinic reports match the current date filter yet.</div>
+          )}
+          <div className="feed">
+            {filteredTrendPoints.length ? filteredTrendPoints.map((item) => (
+              <div className="insight-item" key={`trend-${item.id}`}>
+                <div>
+                  <div className="signal-title">{formatDateTime(item.report_date)}</div>
+                  <div className="muted">
+                    Fever {item.fever_cases} | Bleeding {item.bleeding_cases} | Suspected {item.suspected_cases}
+                  </div>
+                </div>
+                <span className={`tag ${item.bleeding_cases > 0 || item.suspected_cases > 0 ? "red" : item.fever_cases > 0 ? "amber" : "green"}`}>
+                  {item.bleeding_cases > 0 || item.suspected_cases > 0 ? "Escalate" : item.fever_cases > 0 ? "Watch" : "Stable"}
+                </span>
+              </div>
+            )) : null}
+          </div>
+        </article>
+
+        <article className="card">
+          <div className="card-header">
+            <div>
+              <h3>Trend interpretation</h3>
+              <p className="muted">How clinic teams should read the submission pattern they are building.</p>
+            </div>
+          </div>
+          <div className="feed">
+            <InfoRow title="Rising fever counts" copy="Repeated increases in fever counts should trigger stronger screening and a closer look at contact history." />
+            <InfoRow title="Bleeding or suspected-case jumps" copy="These are the strongest clinic-side signs that the response posture should shift from routine review to escalation." />
+            <InfoRow title="Keep reporting consistently" copy="Trend value comes from continuity. Even small daily updates help the platform see change earlier." />
+          </div>
+        </article>
+      </section>
+    </>
+  );
+}
+
 function DataOpsPage({ initials, user, token }) {
   const [filters, setFilters] = useState({
     disease: "Lassa fever",
@@ -1698,16 +2791,16 @@ function DataOpsPage({ initials, user, token }) {
     notification: {
       disease: "Lassa fever",
       audience: "Public health",
-      recipient_email: "surveillance@clinicai-sentinel.local",
-      recipient_sms: "+2348000000000",
-      recipient_whatsapp: "+2348000000000",
+      recipient_email: "",
+      recipient_sms: "",
+      recipient_whatsapp: "",
       channel: "Dashboard",
       location: "Ondo",
       priority: "High",
       status: "Queued",
       title: "Red alert review for Ondo",
       message: "ClinicAI Sentinel recommends rapid review of high-risk Lassa fever signals in Ondo.",
-      recipient: "surveillance@clinicai-sentinel.local"
+      recipient: ""
     }
   });
 
@@ -2417,7 +3510,7 @@ function DataOpsPage({ initials, user, token }) {
           <div className="card-header">
             <div>
               <h3>Notification dispatch</h3>
-              <p className="muted">Queue dashboard, email, SMS, and WhatsApp-style notifications from active alerts.</p>
+              <p className="muted">Queue dashboard, email, SMS, and WhatsApp notifications from active alerts. If recipient fields are empty, saved role contact details will be used.</p>
             </div>
           </div>
           <div className="form-grid form-grid-3">
@@ -3005,6 +4098,18 @@ function truncateText(value, limit) {
     return value;
   }
   return `${value.slice(0, limit).trim()}...`;
+}
+
+function downloadTextFile(filename, content) {
+  const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  document.body.appendChild(anchor);
+  anchor.click();
+  document.body.removeChild(anchor);
+  URL.revokeObjectURL(url);
 }
 
 function storyTone(location = "") {

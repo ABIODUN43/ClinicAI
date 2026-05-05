@@ -27,6 +27,9 @@ class Settings(BaseSettings):
     whatsapp_api_key: str = ""
     whatsapp_sender_id: str = "ClinicAI"
     whatsapp_outbox_path: str = "backend/outbox/whatsapp"
+    termii_base_url: str = ""
+    termii_api_key: str = ""
+    termii_sender_id: str = "ClinicAI"
 
     model_config = SettingsConfigDict(
         env_file=".env",

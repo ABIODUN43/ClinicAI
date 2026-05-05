@@ -283,3 +283,17 @@ class Notification(Base):
     source_alert_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     source_prediction_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class ContactPreference(Base):
+    __tablename__ = "contact_preferences"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    name: Mapped[str] = mapped_column(String(120))
+    email: Mapped[str] = mapped_column(String(150), index=True)
+    role: Mapped[str] = mapped_column(String(40), index=True)
+    location: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    sms_number: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    whatsapp_number: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())

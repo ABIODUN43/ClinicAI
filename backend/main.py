@@ -13,6 +13,8 @@ from .app.schemas import (
     AlertCreate,
     ClinicReportCreate,
     ClinicReportResponse,
+    ContactPreferenceCreate,
+    ContactPreferenceResponse,
     DatasetBatchRunResponse,
     DatasetStatusResponse,
     EmailDispatchResponse,
@@ -42,6 +44,7 @@ from .app.schemas import (
     SmsDispatchResponse,
     SymptomReportCreate,
     SymptomReportResponse,
+    SymptomReportUpdate,
     TrainingRunResponse,
     UserResponse,
     WeatherIngestionRequest,
@@ -64,6 +67,7 @@ from .app.services import (
     create_signal,
     create_symptom_report,
     create_weather_record,
+    delete_symptom_report,
     get_training_dataset_status,
     generate_alert_notifications,
     generate_surveillance_report,
@@ -71,6 +75,7 @@ from .app.services import (
     list_training_runs,
     list_alerts,
     list_clinic_reports,
+    list_contact_preferences,
     list_news_records,
     list_notifications,
     list_predictions,
@@ -86,6 +91,8 @@ from .app.services import (
     send_queued_sms_notifications,
     send_queued_whatsapp_notifications,
     train_operational_model,
+    update_symptom_report,
+    upsert_contact_preference,
     run_trusted_news_ingestion,
 )
 from .app.security import bearer_scheme, create_access_token, require_bearer_token
@@ -156,7 +163,7 @@ def login_with_google(payload: GoogleTokenRequest):
             detail="Google profile is missing required fields.",
         )
 
-    role = resolve_user_role(email)
+    role = payload.requested_role or resolve_user_role(email)
     access_token = create_access_token(email=email, name=name, image_url=image_url, role=role)
     user = UserResponse(name=name, email=email, image_url=image_url, role=role)
     return SessionResponse(access_token=access_token, user=user)
@@ -171,6 +178,41 @@ def get_current_user(credentials=Depends(bearer_scheme)):
         image_url=user.get("picture"),
         role=user.get("role", "admin"),
     )
+
+
+@app.get("/api/contact-preferences", response_model=list[ContactPreferenceResponse])
+def get_contact_preferences(
+    role: str | None = None,
+    email: str | None = None,
+    limit: int = 50,
+    credentials=Depends(bearer_scheme),
+    db: Session = Depends(get_db),
+):
+    user = require_bearer_token(credentials)
+    require_role(user, "clinic", "public_health", "admin")
+    effective_email = None if user.get("role") == "admin" else user.get("sub")
+    effective_role = role if user.get("role") == "admin" else user.get("role")
+    return list_contact_preferences(db, role=effective_role, email=email or effective_email, limit=limit)
+
+
+@app.post("/api/contact-preferences", response_model=ContactPreferenceResponse, status_code=status.HTTP_201_CREATED)
+def post_contact_preferences(
+    payload: ContactPreferenceCreate,
+    credentials=Depends(bearer_scheme),
+    db: Session = Depends(get_db),
+):
+    user = require_bearer_token(credentials)
+    require_role(user, "clinic", "public_health", "admin")
+    if user.get("role") != "admin":
+        payload = ContactPreferenceCreate(
+            **{
+                **payload.model_dump(),
+                "email": user.get("sub"),
+                "role": user.get("role", payload.role),
+                "name": user.get("name") or payload.name,
+            }
+        )
+    return upsert_contact_preference(db, payload)
 
 
 @app.get("/api/dashboard/home")
@@ -367,6 +409,50 @@ def post_symptom_report(
     user = require_bearer_token(credentials)
     require_role(user, "clinic", "public_health", "admin")
     return create_symptom_report(db, payload)
+
+
+@app.put("/api/symptom-reports/{report_id}", response_model=SymptomReportResponse)
+def put_symptom_report(
+    report_id: int,
+    payload: SymptomReportUpdate,
+    credentials=Depends(bearer_scheme),
+    db: Session = Depends(get_db),
+):
+    user = require_bearer_token(credentials)
+    require_role(user, "clinic", "public_health", "admin")
+    try:
+        return update_symptom_report(
+            db,
+            report_id,
+            payload,
+            actor_role=user.role,
+            actor_name=user.name,
+        )
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except PermissionError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+
+
+@app.delete("/api/symptom-reports/{report_id}", status_code=status.HTTP_204_NO_CONTENT)
+def remove_symptom_report(
+    report_id: int,
+    credentials=Depends(bearer_scheme),
+    db: Session = Depends(get_db),
+):
+    user = require_bearer_token(credentials)
+    require_role(user, "clinic", "public_health", "admin")
+    try:
+        delete_symptom_report(
+            db,
+            report_id,
+            actor_role=user.role,
+            actor_name=user.name,
+        )
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except PermissionError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
 
 
 @app.get("/api/weather-records", response_model=list[WeatherRecordResponse])

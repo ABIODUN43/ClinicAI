@@ -2,6 +2,7 @@ from collections import defaultdict
 from datetime import UTC, datetime
 from email.message import EmailMessage
 from pathlib import Path
+import requests
 import smtplib
 
 from sqlalchemy import desc, func
@@ -23,6 +24,7 @@ from .nlp import analyze_news_text
 from .models import (
     Alert,
     ClinicReport,
+    ContactPreference,
     NewsRecord,
     Notification,
     Prediction,
@@ -41,6 +43,7 @@ from .models import (
 from .schemas import (
     AlertCreate,
     ClinicReportCreate,
+    ContactPreferenceCreate,
     NewsIngestionRequest,
     NewsRecordCreate,
     NewsAnalysisRequest,
@@ -52,6 +55,7 @@ from .schemas import (
     RecommendationCreate,
     SignalCreate,
     SymptomReportCreate,
+    SymptomReportUpdate,
     WeatherIngestionRequest,
     WeatherRecordCreate,
 )
@@ -235,6 +239,21 @@ def list_notifications(
     )
 
 
+def list_contact_preferences(
+    db: Session,
+    *,
+    role: str | None = None,
+    email: str | None = None,
+    limit: int = 50,
+) -> list[ContactPreference]:
+    query = db.query(ContactPreference)
+    if role:
+        query = query.filter(ContactPreference.role == role)
+    if email:
+        query = query.filter(ContactPreference.email == email)
+    return query.order_by(desc(ContactPreference.updated_at), desc(ContactPreference.id)).limit(limit).all()
+
+
 def create_signal(db: Session, payload: SignalCreate) -> Signal:
     signal = Signal(**payload.model_dump())
     db.add(signal)
@@ -283,6 +302,43 @@ def create_symptom_report(db: Session, payload: SymptomReportCreate) -> SymptomR
     return symptom_report
 
 
+def update_symptom_report(
+    db: Session,
+    report_id: int,
+    payload: SymptomReportUpdate,
+    *,
+    actor_role: str,
+    actor_name: str,
+) -> SymptomReport:
+    symptom_report = db.query(SymptomReport).filter(SymptomReport.id == report_id).first()
+    if not symptom_report:
+        raise LookupError("Symptom report not found")
+    if actor_role == "clinic" and symptom_report.reported_by.strip().lower() != actor_name.strip().lower():
+        raise PermissionError("Clinic users can only edit their own submitted reports")
+
+    for field, value in payload.model_dump().items():
+        setattr(symptom_report, field, value)
+    db.commit()
+    db.refresh(symptom_report)
+    return symptom_report
+
+
+def delete_symptom_report(
+    db: Session,
+    report_id: int,
+    *,
+    actor_role: str,
+    actor_name: str,
+) -> None:
+    symptom_report = db.query(SymptomReport).filter(SymptomReport.id == report_id).first()
+    if not symptom_report:
+        raise LookupError("Symptom report not found")
+    if actor_role == "clinic" and symptom_report.reported_by.strip().lower() != actor_name.strip().lower():
+        raise PermissionError("Clinic users can only delete their own submitted reports")
+    db.delete(symptom_report)
+    db.commit()
+
+
 def create_weather_record(db: Session, payload: WeatherRecordCreate) -> WeatherRecord:
     weather_record = WeatherRecord(**payload.model_dump())
     db.add(weather_record)
@@ -305,6 +361,25 @@ def create_notification(db: Session, payload: NotificationCreate) -> Notificatio
     db.commit()
     db.refresh(notification)
     return notification
+
+
+def upsert_contact_preference(db: Session, payload: ContactPreferenceCreate) -> ContactPreference:
+    preference = (
+        db.query(ContactPreference)
+        .filter(ContactPreference.email == payload.email, ContactPreference.role == payload.role)
+        .first()
+    )
+    if preference:
+        preference.name = payload.name
+        preference.location = payload.location
+        preference.sms_number = payload.sms_number
+        preference.whatsapp_number = payload.whatsapp_number
+    else:
+        preference = ContactPreference(**payload.model_dump())
+        db.add(preference)
+    db.commit()
+    db.refresh(preference)
+    return preference
 
 
 def analyze_news_submission(payload: NewsAnalysisRequest) -> dict:
@@ -457,14 +532,18 @@ def generate_surveillance_report(db: Session, payload: ReportRequest) -> dict:
 
 
 def generate_alert_notifications(db: Session, payload: NotificationBatchRequest) -> dict:
+    fallback_preference = _latest_contact_preference_for_audience(db, payload.audience)
+    recipient_email = payload.recipient_email or (fallback_preference.email if fallback_preference else None)
+    recipient_sms = payload.recipient_sms or (fallback_preference.sms_number if fallback_preference else None)
+    recipient_whatsapp = payload.recipient_whatsapp or (fallback_preference.whatsapp_number if fallback_preference else None)
     predictions = list_predictions(db, disease=payload.disease, limit=20)
     alerts = list_alerts(db, disease=payload.disease, limit=20)
     generated_notifications: list[Notification] = []
     channel_targets = [
         ("Dashboard", None),
-        ("Email", payload.recipient_email),
-        ("SMS", payload.recipient_sms),
-        ("WhatsApp", payload.recipient_whatsapp),
+        ("Email", recipient_email),
+        ("SMS", recipient_sms),
+        ("WhatsApp", recipient_whatsapp),
     ]
 
     for alert in alerts:
@@ -608,19 +687,22 @@ def send_queued_sms_notifications(db: Session) -> dict:
     sent = 0
     failed = 0
     mode = _sms_delivery_mode()
-
-    # Provider integration is intentionally deferred; outbox mode remains the safe MVP default.
-    if mode == "provider":
-        mode = "outbox"
-
-    outbox_dir = Path(settings.sms_outbox_path)
-    outbox_dir.mkdir(parents=True, exist_ok=True)
     for notification in queued_notifications:
         try:
-            path = outbox_dir / f"sms_notification_{notification.id}_{datetime.now(UTC).strftime('%Y%m%d_%H%M%S')}.txt"
-            path.write_text(_build_sms_message(notification), encoding="utf-8")
-            notification.status = "Saved to sms outbox"
-            outbox_paths.append(str(path.resolve()))
+            if mode == "termii":
+                result = _send_via_termii_sms(notification)
+                notification.status = "Sent via Termii Number API"
+                if result.get("message_id"):
+                    notification.status = f"Sent via Termii Number API ({result['message_id']})"
+            elif mode == "provider":
+                result = _send_via_generic_sms_provider(notification)
+                notification.status = "Sent via SMS provider"
+                if result.get("message_id"):
+                    notification.status = f"Sent via SMS provider ({result['message_id']})"
+            else:
+                path = _write_sms_outbox_file(notification)
+                notification.status = "Saved to sms outbox"
+                outbox_paths.append(str(path.resolve()))
             sent += 1
         except Exception as exc:
             notification.status = f"Failed: {str(exc)[:20]}"
@@ -657,17 +739,11 @@ def send_queued_whatsapp_notifications(db: Session) -> dict:
     sent = 0
     failed = 0
     mode = _whatsapp_delivery_mode()
-
-    # Provider integration is intentionally deferred; outbox mode remains the safe MVP default.
-    if mode == "provider":
-        mode = "outbox"
-
-    outbox_dir = Path(settings.whatsapp_outbox_path)
-    outbox_dir.mkdir(parents=True, exist_ok=True)
     for notification in queued_notifications:
         try:
-            path = outbox_dir / f"whatsapp_notification_{notification.id}_{datetime.now(UTC).strftime('%Y%m%d_%H%M%S')}.txt"
-            path.write_text(_build_whatsapp_message(notification), encoding="utf-8")
+            if mode == "provider":
+                raise RuntimeError("WhatsApp provider setup required")
+            path = _write_whatsapp_outbox_file(notification)
             notification.status = "Saved to whatsapp outbox"
             outbox_paths.append(str(path.resolve()))
             sent += 1
@@ -1510,6 +1586,16 @@ def _notification_message(
     )
 
 
+def _latest_contact_preference_for_audience(db: Session, audience: str) -> ContactPreference | None:
+    audience_key = audience.strip().lower().replace(" ", "_")
+    return (
+        db.query(ContactPreference)
+        .filter(ContactPreference.role == audience_key)
+        .order_by(desc(ContactPreference.updated_at), desc(ContactPreference.id))
+        .first()
+    )
+
+
 def _email_delivery_mode() -> str:
     return "smtp" if settings.smtp_host and settings.smtp_sender else "outbox"
 
@@ -1537,7 +1623,11 @@ def _build_email_message(notification: Notification) -> EmailMessage:
 
 
 def _sms_delivery_mode() -> str:
-    return "provider" if settings.sms_provider_url and settings.sms_api_key else "outbox"
+    if settings.termii_api_key:
+        return "termii"
+    if settings.sms_provider_url and settings.sms_api_key:
+        return "provider"
+    return "outbox"
 
 
 def _build_sms_message(notification: Notification) -> str:
@@ -1567,3 +1657,102 @@ def _build_whatsapp_message(notification: Notification) -> str:
         f"Title: {notification.title}\n"
         f"Message: {notification.message}\n"
     )
+
+
+def _write_sms_outbox_file(notification: Notification) -> Path:
+    outbox_dir = Path(settings.sms_outbox_path)
+    outbox_dir.mkdir(parents=True, exist_ok=True)
+    path = outbox_dir / f"sms_notification_{notification.id}_{datetime.now(UTC).strftime('%Y%m%d_%H%M%S')}.txt"
+    path.write_text(_build_sms_message(notification), encoding="utf-8")
+    return path
+
+
+def _write_whatsapp_outbox_file(notification: Notification) -> Path:
+    outbox_dir = Path(settings.whatsapp_outbox_path)
+    outbox_dir.mkdir(parents=True, exist_ok=True)
+    path = outbox_dir / f"whatsapp_notification_{notification.id}_{datetime.now(UTC).strftime('%Y%m%d_%H%M%S')}.txt"
+    path.write_text(_build_whatsapp_message(notification), encoding="utf-8")
+    return path
+
+
+def _normalized_sms_recipient(recipient: str | None) -> str:
+    if not recipient:
+        raise ValueError("SMS recipient is missing")
+    digits = "".join(character for character in recipient if character.isdigit())
+    if digits.startswith("0"):
+        digits = f"234{digits[1:]}"
+    if digits.startswith("234"):
+        return digits
+    if recipient.startswith("+234"):
+        return recipient[1:]
+    return digits
+
+
+def _send_via_termii_sms(notification: Notification) -> dict:
+    recipient = _normalized_sms_recipient(notification.recipient)
+    number_payload = {
+        "to": recipient,
+        "sms": notification.message,
+        "api_key": settings.termii_api_key,
+    }
+    sender_payload = {
+        "to": recipient,
+        "from": settings.termii_sender_id or settings.sms_sender_id,
+        "sms": notification.message,
+        "type": "plain",
+        "channel": "generic",
+        "api_key": settings.termii_api_key,
+    }
+    candidate_targets: list[tuple[str, dict]] = []
+    configured_base = (settings.termii_base_url or "").rstrip("/")
+    if configured_base:
+        candidate_targets.append((f"{configured_base}/api/sms/number/send", number_payload))
+        candidate_targets.append((f"{configured_base}/api/sms/send", sender_payload))
+    legacy_targets = [
+        ("https://api.ng.termii.com/api/sms/number/send", number_payload),
+        ("https://api.ng.termii.com/api/sms/send", sender_payload),
+    ]
+    for item in legacy_targets:
+        if item[0] not in {url for url, _ in candidate_targets}:
+            candidate_targets.append(item)
+
+    last_error: Exception | None = None
+    for url, payload in candidate_targets:
+        try:
+            response = requests.post(url, json=payload, timeout=20)
+            response.raise_for_status()
+            body = response.json()
+            if str(body.get("code", "")).lower() not in {"ok", "success"} and not body.get("message_id"):
+                raise RuntimeError(body.get("message") or "Termii SMS request failed")
+            return body
+        except requests.HTTPError as exc:
+            last_error = exc
+            if exc.response is not None and exc.response.status_code == 404:
+                continue
+            raise
+        except Exception as exc:
+            last_error = exc
+            raise
+
+    if last_error:
+        raise last_error
+    raise RuntimeError("Termii SMS request failed")
+
+
+def _send_via_generic_sms_provider(notification: Notification) -> dict:
+    recipient = notification.recipient
+    if not recipient:
+        raise ValueError("SMS recipient is missing")
+    payload = {
+        "to": recipient,
+        "from": settings.sms_sender_id,
+        "sms": notification.message,
+        "api_key": settings.sms_api_key,
+    }
+    response = requests.post(settings.sms_provider_url, json=payload, timeout=20)
+    response.raise_for_status()
+    content_type = response.headers.get("content-type", "")
+    if "application/json" in content_type:
+        body = response.json()
+        return body if isinstance(body, dict) else {"response": body}
+    return {"message_id": response.text[:80]}

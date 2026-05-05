@@ -1,5 +1,29 @@
 const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
 
+function formatDetail(detail) {
+  if (!detail) {
+    return "Request failed.";
+  }
+  if (typeof detail === "string") {
+    return detail;
+  }
+  if (Array.isArray(detail)) {
+    return detail
+      .map((item) => {
+        if (typeof item === "string") {
+          return item;
+        }
+        if (item?.msg) {
+          const field = Array.isArray(item.loc) ? item.loc[item.loc.length - 1] : "field";
+          return `${field}: ${item.msg}`;
+        }
+        return JSON.stringify(item);
+      })
+      .join(" | ");
+  }
+  return JSON.stringify(detail);
+}
+
 async function request(path, options = {}) {
   const response = await fetch(`${API_URL}${path}`, {
     headers: {
@@ -13,21 +37,29 @@ async function request(path, options = {}) {
   const body = isJson ? await response.json() : null;
 
   if (!response.ok) {
-    throw new Error(body?.detail || "Request failed.");
+    throw new Error(formatDetail(body?.detail));
   }
 
   return body;
 }
 
-export function loginWithGoogle(credential) {
+export function loginWithGoogle(credential, requestedRole) {
   return request("/api/auth/google", {
     method: "POST",
-    body: JSON.stringify({ credential })
+    body: JSON.stringify({ credential, requested_role: requestedRole })
   });
 }
 
 export function fetchCurrentUser(token) {
   return request("/api/auth/me", {
+    headers: {
+      Authorization: `Bearer ${token}`
+    }
+  });
+}
+
+export function fetchContactPreferences(token, params = {}) {
+  return request(withQuery("/api/contact-preferences", params), {
     headers: {
       Authorization: `Bearer ${token}`
     }
@@ -159,6 +191,25 @@ export function createSymptomReport(token, payload) {
   return postWithToken("/api/symptom-reports", token, payload);
 }
 
+export function updateSymptomReport(token, reportId, payload) {
+  return request(`/api/symptom-reports/${reportId}`, {
+    method: "PUT",
+    headers: {
+      Authorization: `Bearer ${token}`
+    },
+    body: JSON.stringify(payload)
+  });
+}
+
+export function deleteSymptomReport(token, reportId) {
+  return request(`/api/symptom-reports/${reportId}`, {
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${token}`
+    }
+  });
+}
+
 export function createWeatherRecord(token, payload) {
   return postWithToken("/api/weather-records", token, payload);
 }
@@ -169,6 +220,10 @@ export function createNewsRecord(token, payload) {
 
 export function createNotification(token, payload) {
   return postWithToken("/api/notifications", token, payload);
+}
+
+export function saveContactPreference(token, payload) {
+  return postWithToken("/api/contact-preferences", token, payload);
 }
 
 export function analyzeNewsRecord(token, payload) {
