@@ -21,6 +21,7 @@ import {
   fetchModelHistory,
   fetchModelStatus,
   fetchNewsRecords,
+  fetchNotificationReplies,
   fetchNotifications,
   fetchPredictions,
   fetchRecommendations,
@@ -196,7 +197,15 @@ function App() {
   }, [user]);
 
   if (!session?.access_token || !user) {
-    return <LoginScreen onLogin={setSession} error={dataError} />;
+    return (
+      <LoginScreen
+        onLogin={(nextSession) => {
+          setDataError("");
+          setSession(nextSession);
+        }}
+        error={dataError}
+      />
+    );
   }
 
   if (!homeData || !analyticsData || !alertsData) {
@@ -252,6 +261,7 @@ function App() {
         onClick={() => {
           if (window.google?.accounts?.id) {
             window.google.accounts.id.disableAutoSelect();
+            window.google.accounts.id.cancel();
           }
 
           clearStoredUser();
@@ -259,6 +269,10 @@ function App() {
           setHomeData(null);
           setAnalyticsData(null);
           setAlertsData(null);
+          setDataError("");
+          window.setTimeout(() => {
+            window.location.reload();
+          }, 80);
         }}
       >
         Sign out
@@ -270,8 +284,25 @@ function App() {
 function LoginScreen({ onLogin, error: upstreamError }) {
   const [error, setError] = useState("");
   const [selectedRole, setSelectedRole] = useState("admin");
+  const [googleRenderNonce, setGoogleRenderNonce] = useState(0);
   const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
   const canUseGoogle = Boolean(clientId);
+  const googleNeedsReset = (error || upstreamError || "").toLowerCase().includes("google sign-in expired or became stale");
+
+  function resetGoogleSignIn() {
+    if (window.google?.accounts?.id) {
+      window.google.accounts.id.disableAutoSelect();
+      window.google.accounts.id.cancel();
+    }
+    const target = document.getElementById("google-signin");
+    if (target) {
+      target.innerHTML = "";
+    }
+    setError("");
+    window.setTimeout(() => {
+      window.location.reload();
+    }, 80);
+  }
 
   useEffect(() => {
     if (!canUseGoogle) {
@@ -299,14 +330,26 @@ function LoginScreen({ onLogin, error: upstreamError }) {
         return;
       }
 
+      window.google.accounts.id.cancel();
       window.google.accounts.id.initialize({
         client_id: clientId,
         callback: async (response) => {
+          if (!response?.credential) {
+            setError("Google sign-in did not return a valid credential. Please try again.");
+            setGoogleRenderNonce((current) => current + 1);
+            return;
+          }
           try {
             const session = await loginWithGoogle(response.credential, selectedRole);
             onLogin(session);
           } catch (loginError) {
-            setError(loginError.message);
+            const message = loginError.message || "Google sign-in failed.";
+            if (message.toLowerCase().includes("google token verification failed")) {
+              setError("Google sign-in expired or became stale. Please click Sign in with Google again.");
+              setGoogleRenderNonce((current) => current + 1);
+              return;
+            }
+            setError(message);
           }
         }
       });
@@ -332,7 +375,7 @@ function LoginScreen({ onLogin, error: upstreamError }) {
     return () => {
       mounted = false;
     };
-  }, [canUseGoogle, clientId, onLogin, selectedRole]);
+  }, [canUseGoogle, clientId, onLogin, selectedRole, googleRenderNonce]);
 
   return (
     <div className="login-page">
@@ -363,7 +406,7 @@ function LoginScreen({ onLogin, error: upstreamError }) {
             <strong>Compare all diseases in one board</strong>
           </div>
         </div>
-        <div id="google-signin" className="google-button-slot"></div>
+        <div id="google-signin" key={googleRenderNonce} className="google-button-slot"></div>
         <button
           className="btn primary demo-button"
           type="button"
@@ -389,6 +432,11 @@ function LoginScreen({ onLogin, error: upstreamError }) {
           </select>
         </label>
         {error || upstreamError ? <p className="auth-error">{error || upstreamError}</p> : null}
+        {googleNeedsReset ? (
+          <button className="btn secondary" type="button" onClick={resetGoogleSignIn}>
+            Reload login page
+          </button>
+        ) : null}
         <p className="tiny muted">
           Expected env key: <code>VITE_GOOGLE_CLIENT_ID</code>
         </p>
@@ -2712,6 +2760,7 @@ function DataOpsPage({ initials, user, token }) {
     weatherRecords: [],
     newsRecords: [],
     notifications: [],
+    notificationReplies: [],
     modelStatus: null,
     datasetStatus: null,
     historicalReports: [],
@@ -2720,6 +2769,7 @@ function DataOpsPage({ initials, user, token }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [activeActionMessage, setActiveActionMessage] = useState("");
   const [pipelineResult, setPipelineResult] = useState(null);
   const [newsAnalysis, setNewsAnalysis] = useState(null);
   const [ingestionResult, setIngestionResult] = useState(null);
@@ -2817,6 +2867,7 @@ function DataOpsPage({ initials, user, token }) {
         weatherRecords,
         newsRecords,
         notifications,
+        notificationReplies,
         modelStatus,
         datasetStatus,
         historicalReports,
@@ -2862,6 +2913,10 @@ function DataOpsPage({ initials, user, token }) {
           disease: filters.disease,
           location: filters.location
         }),
+        fetchNotificationReplies(token, {
+          channel: "WhatsApp",
+          location: filters.location
+        }),
         fetchModelStatus(token),
         fetchDatasetStatus(token, filters.disease || "Lassa fever"),
         fetchHistoricalReports(token, filters.disease || "Lassa fever"),
@@ -2878,6 +2933,7 @@ function DataOpsPage({ initials, user, token }) {
         weatherRecords,
         newsRecords,
         notifications,
+        notificationReplies,
         modelStatus,
         datasetStatus,
         historicalReports,
@@ -2899,6 +2955,7 @@ function DataOpsPage({ initials, user, token }) {
     setSubmitting(kind);
     setSuccess("");
     setError("");
+    setActiveActionMessage(`${kind} is running...`);
     try {
       await runner();
       setSuccess(`${kind} submitted successfully.`);
@@ -2906,6 +2963,8 @@ function DataOpsPage({ initials, user, token }) {
     } catch (submitError) {
       setError(submitError.message);
     } finally {
+      await new Promise((resolve) => setTimeout(resolve, 1200));
+      setActiveActionMessage("");
       setSubmitting("");
     }
   }
@@ -3008,6 +3067,7 @@ function DataOpsPage({ initials, user, token }) {
     setSubmitting("Notification generation");
     setSuccess("");
     setError("");
+    setActiveActionMessage("Creating public health updates...");
     try {
       const result = await generateNotifications(token, {
         disease: forms.notification.disease,
@@ -3016,11 +3076,19 @@ function DataOpsPage({ initials, user, token }) {
         recipient_sms: forms.notification.recipient_sms || null,
         recipient_whatsapp: forms.notification.recipient_whatsapp || null
       });
-      setSuccess(`Generated ${result.length} notification records across the selected channels.`);
+      const channels = [...new Set(result.map((item) => item.channel))];
+      const locations = [...new Set(result.map((item) => item.location))];
+      setSuccess(
+        result.length
+          ? `Created ${result.length} public health updates for ${locations.join(", ")} across ${channels.join(", ")}.`
+          : "No new public health updates were created. Check whether Red or Amber alerts exist for the selected disease."
+      );
       await loadOps();
     } catch (notificationError) {
       setError(notificationError.message);
     } finally {
+      await new Promise((resolve) => setTimeout(resolve, 1200));
+      setActiveActionMessage("");
       setSubmitting("");
     }
   }
@@ -3029,14 +3097,21 @@ function DataOpsPage({ initials, user, token }) {
     setSubmitting("Email dispatch");
     setSuccess("");
     setError("");
+    setActiveActionMessage("Sending queued email updates...");
     try {
       const result = await sendQueuedEmailNotifications(token);
       setEmailDispatchResult(result);
-      setSuccess(`Email dispatch completed. ${result.sent} of ${result.processed} queued email notifications processed via ${result.mode}.`);
+      setSuccess(
+        result.mode === "outbox"
+          ? `Email update saved locally for ${result.sent} of ${result.processed} queued items. It was not sent to inboxes because SMTP is not configured yet.`
+          : `Email dispatch completed. ${result.sent} of ${result.processed} queued email notifications were sent via ${result.mode}.`
+      );
       await loadOps();
     } catch (dispatchError) {
       setError(dispatchError.message);
     } finally {
+      await new Promise((resolve) => setTimeout(resolve, 1200));
+      setActiveActionMessage("");
       setSubmitting("");
     }
   }
@@ -3045,14 +3120,21 @@ function DataOpsPage({ initials, user, token }) {
     setSubmitting("SMS dispatch");
     setSuccess("");
     setError("");
+    setActiveActionMessage("Sending queued SMS updates...");
     try {
       const result = await sendQueuedSmsNotifications(token);
       setSmsDispatchResult(result);
-      setSuccess(`SMS dispatch completed. ${result.sent} of ${result.processed} queued SMS notifications processed via ${result.mode}.`);
+      setSuccess(
+        result.failed
+          ? `SMS dispatch attempted ${result.processed} items. ${result.sent} succeeded and ${result.failed} failed via ${result.mode}.`
+          : `SMS dispatch completed. ${result.sent} of ${result.processed} queued SMS notifications were sent via ${result.mode}.`
+      );
       await loadOps();
     } catch (dispatchError) {
       setError(dispatchError.message);
     } finally {
+      await new Promise((resolve) => setTimeout(resolve, 1200));
+      setActiveActionMessage("");
       setSubmitting("");
     }
   }
@@ -3061,14 +3143,21 @@ function DataOpsPage({ initials, user, token }) {
     setSubmitting("WhatsApp dispatch");
     setSuccess("");
     setError("");
+    setActiveActionMessage("Sending queued WhatsApp updates...");
     try {
       const result = await sendQueuedWhatsAppNotifications(token);
       setWhatsAppDispatchResult(result);
-      setSuccess(`WhatsApp dispatch completed. ${result.sent} of ${result.processed} queued WhatsApp notifications processed via ${result.mode}.`);
+      setSuccess(
+        result.failed
+          ? `WhatsApp dispatch attempted ${result.processed} items. ${result.sent} succeeded and ${result.failed} failed via ${result.mode}.`
+          : `WhatsApp dispatch completed. ${result.sent} of ${result.processed} queued WhatsApp updates were sent via ${result.mode}.`
+      );
       await loadOps();
     } catch (dispatchError) {
       setError(dispatchError.message);
     } finally {
+      await new Promise((resolve) => setTimeout(resolve, 1200));
+      setActiveActionMessage("");
       setSubmitting("");
     }
   }
@@ -3509,10 +3598,26 @@ function DataOpsPage({ initials, user, token }) {
           <div className="divider"></div>
           <div className="card-header">
             <div>
-              <h3>Notification dispatch</h3>
-              <p className="muted">Queue dashboard, email, SMS, and WhatsApp notifications from active alerts. If recipient fields are empty, saved role contact details will be used.</p>
+              <h3>Public health message updates</h3>
+              <p className="muted">Create and send public-health updates by dashboard, email, SMS, and WhatsApp. If recipient fields are empty, saved role contact details will be used.</p>
             </div>
           </div>
+          <div className="footer-note">
+            Saved public-health targets are currently used when the recipient fields are blank. Email delivery still needs SMTP configuration for messages to reach a real inbox.
+          </div>
+          <div className="footer-note">
+            <strong>Channel readiness</strong>
+            <div className="tiny">Dashboard: live now</div>
+            <div className="tiny">WhatsApp: Twilio sandbox testing</div>
+            <div className="tiny">SMS: Termii provider pending fix</div>
+            <div className="tiny">Email: SMTP pending for real inbox delivery</div>
+          </div>
+          {activeActionMessage ? (
+            <div className="footer-note">
+              <strong>Processing</strong>
+              <div>{activeActionMessage}</div>
+            </div>
+          ) : null}
           <div className="form-grid form-grid-3">
             <FilterField label="Notification disease" value={forms.notification.disease} onChange={(value) => setForms((current) => ({ ...current, notification: { ...current.notification, disease: value } }))} options={["Lassa fever", "Cholera", "Mpox", "Meningitis"]} />
             <FilterInput label="Audience" value={forms.notification.audience} onChange={(value) => setForms((current) => ({ ...current, notification: { ...current.notification, audience: value } }))} placeholder="Public health" />
@@ -3584,7 +3689,7 @@ function DataOpsPage({ initials, user, token }) {
               disabled={submitting === "Notification generation"}
               onClick={runNotificationGeneration}
             >
-              Generate notifications
+              {submitting === "Notification generation" ? "Creating updates..." : "Create public health updates"}
             </button>
             <button
               className="btn secondary"
@@ -3630,7 +3735,7 @@ function DataOpsPage({ initials, user, token }) {
               disabled={submitting === "WhatsApp dispatch"}
               onClick={runQueuedWhatsAppDispatch}
             >
-              Send queued WhatsApp
+              Send WhatsApp updates now
             </button>
           </div>
           {success ? <p className="success-copy">{success}</p> : null}
@@ -3916,6 +4021,46 @@ function DataOpsPage({ initials, user, token }) {
                   <td>{item.status}</td>
                 </tr>
               ))}
+            </tbody>
+          </table>
+        </article>
+
+        <article className="table-card">
+          <div className="card-header">
+            <div>
+              <h3>WhatsApp field replies</h3>
+              <p className="muted">Public-health responses like ACK, ESCALATE, and NEED SUPPORT are captured here.</p>
+            </div>
+            <div className="status-chip amber">{opsData.notificationReplies.length} recent replies</div>
+          </div>
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Sender</th>
+                <th>Command</th>
+                <th>Location</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {opsData.notificationReplies.length ? (
+                opsData.notificationReplies.map((item) => (
+                  <tr key={item.id}>
+                    <td>{item.profile_name || item.sender}</td>
+                    <td>
+                      <span className={`tag ${item.command === "ESCALATE" ? "red" : item.command === "NEED_SUPPORT" ? "amber" : "green"}`}>
+                        {item.command.replace("_", " ")}
+                      </span>
+                    </td>
+                    <td>{item.location || "Unmatched"}</td>
+                    <td>{item.status}</td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="4">No WhatsApp replies have been received yet.</td>
+                </tr>
+              )}
             </tbody>
           </table>
         </article>

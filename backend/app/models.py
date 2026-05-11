@@ -297,3 +297,20 @@ class ContactPreference(Base):
     whatsapp_number: Mapped[str | None] = mapped_column(String(40), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
+class NotificationReply(Base):
+    __tablename__ = "notification_replies"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    channel: Mapped[str] = mapped_column(String(30), index=True)
+    sender: Mapped[str] = mapped_column(String(150), index=True)
+    audience: Mapped[str] = mapped_column(String(40), index=True)
+    body: Mapped[str] = mapped_column(Text)
+    command: Mapped[str] = mapped_column(String(40), index=True)
+    status: Mapped[str] = mapped_column(String(40), index=True)
+    location: Mapped[str | None] = mapped_column(String(100), nullable=True, index=True)
+    related_notification_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    provider_message_sid: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    profile_name: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

@@ -27,6 +27,7 @@ from .models import (
     ContactPreference,
     NewsRecord,
     Notification,
+    NotificationReply,
     Prediction,
     Recommendation,
     Signal,
@@ -252,6 +253,24 @@ def list_contact_preferences(
     if email:
         query = query.filter(ContactPreference.email == email)
     return query.order_by(desc(ContactPreference.updated_at), desc(ContactPreference.id)).limit(limit).all()
+
+
+def list_notification_replies(
+    db: Session,
+    *,
+    channel: str | None = None,
+    command: str | None = None,
+    location: str | None = None,
+    limit: int = 100,
+) -> list[NotificationReply]:
+    query = db.query(NotificationReply)
+    if channel:
+        query = query.filter(NotificationReply.channel == channel)
+    if command:
+        query = query.filter(NotificationReply.command == command)
+    if location:
+        query = query.filter(NotificationReply.location == location)
+    return query.order_by(desc(NotificationReply.created_at), desc(NotificationReply.id)).limit(limit).all()
 
 
 def create_signal(db: Session, payload: SignalCreate) -> Signal:
@@ -689,11 +708,16 @@ def send_queued_sms_notifications(db: Session) -> dict:
     mode = _sms_delivery_mode()
     for notification in queued_notifications:
         try:
-            if mode == "termii":
+            if mode == "twilio":
+                result = _send_via_twilio_sms(notification)
+                notification.status = "Sent via Twilio"
+                if result.get("sid"):
+                    notification.status = f"Sent via Twilio ({result['sid']})"
+            elif mode == "termii":
                 result = _send_via_termii_sms(notification)
-                notification.status = "Sent via Termii Number API"
+                notification.status = "Sent via Termii"
                 if result.get("message_id"):
-                    notification.status = f"Sent via Termii Number API ({result['message_id']})"
+                    notification.status = f"Sent via Termii ({result['message_id']})"
             elif mode == "provider":
                 result = _send_via_generic_sms_provider(notification)
                 notification.status = "Sent via SMS provider"
@@ -741,12 +765,19 @@ def send_queued_whatsapp_notifications(db: Session) -> dict:
     mode = _whatsapp_delivery_mode()
     for notification in queued_notifications:
         try:
-            if mode == "provider":
+            if mode == "twilio":
+                result = _send_via_twilio_whatsapp(notification)
+                notification.status = "Sent via Twilio WhatsApp"
+                if result.get("sid"):
+                    notification.status = f"Sent via Twilio WhatsApp ({result['sid']})"
+                sent += 1
+            elif mode == "provider":
                 raise RuntimeError("WhatsApp provider setup required")
-            path = _write_whatsapp_outbox_file(notification)
-            notification.status = "Saved to whatsapp outbox"
-            outbox_paths.append(str(path.resolve()))
-            sent += 1
+            else:
+                path = _write_whatsapp_outbox_file(notification)
+                notification.status = "Saved to whatsapp outbox"
+                outbox_paths.append(str(path.resolve()))
+                sent += 1
         except Exception as exc:
             notification.status = f"Failed: {str(exc)[:20]}"
             failed += 1
@@ -759,6 +790,74 @@ def send_queued_whatsapp_notifications(db: Session) -> dict:
         "mode": mode,
         "outbox_paths": outbox_paths,
     }
+
+
+def record_whatsapp_reply(
+    db: Session,
+    *,
+    sender: str,
+    body: str,
+    message_sid: str | None = None,
+    profile_name: str | None = None,
+) -> tuple[NotificationReply, str]:
+    normalized_command = _normalize_reply_command(body)
+    normalized_sender = _normalized_e164_recipient(sender)
+    matched_notification = (
+        db.query(Notification)
+        .filter(
+            Notification.channel == "WhatsApp",
+            Notification.recipient == normalized_sender,
+        )
+        .order_by(desc(Notification.created_at), desc(Notification.id))
+        .first()
+    )
+    location = matched_notification.location if matched_notification else None
+    audience = matched_notification.audience if matched_notification else "Public health"
+    status = _reply_status_for_command(normalized_command)
+
+    reply = NotificationReply(
+        channel="WhatsApp",
+        sender=normalized_sender,
+        audience=audience,
+        body=body.strip(),
+        command=normalized_command,
+        status=status,
+        location=location,
+        related_notification_id=matched_notification.id if matched_notification else None,
+        provider_message_sid=message_sid,
+        profile_name=profile_name,
+    )
+    db.add(reply)
+
+    if matched_notification:
+        matched_notification.status = status
+
+    if normalized_command in {"ESCALATE", "NEED_SUPPORT"} and matched_notification:
+        admin_notification = Notification(
+            disease=matched_notification.disease,
+            location=matched_notification.location,
+            channel="Dashboard",
+            audience="Admin",
+            priority="High" if normalized_command == "ESCALATE" else "Medium",
+            status="Queued",
+            title=f"{normalized_command.replace('_', ' ').title()} reply from public health in {matched_notification.location}",
+            message=(
+                f"Public health contact {sender} replied {normalized_command} to the WhatsApp surveillance update for "
+                f"{matched_notification.location}. Review and support the response team."
+            ),
+            recipient=None,
+            source_alert_id=matched_notification.source_alert_id,
+            source_prediction_id=matched_notification.source_prediction_id,
+        )
+        db.add(admin_notification)
+
+    db.commit()
+    db.refresh(reply)
+    response_text = _reply_response_message(
+        command=normalized_command,
+        location=location,
+    )
+    return reply, response_text
 
 
 def _render_html_report(
@@ -1573,17 +1672,56 @@ def _notification_message(
     alert: Alert,
     prediction: Prediction | None,
 ) -> str:
-    score_copy = ""
+    score_line = "Risk score: review pending"
+    recommendation_line = alert.action
     if prediction:
-        score_copy = (
-            f" The current model output is {prediction.risk_level.lower()} risk at "
-            f"{round(prediction.risk_score * 100)}%."
-        )
+        score_line = f"Risk score: {round(prediction.risk_score * 100)}% ({prediction.risk_level})"
+        recommendation_line = prediction.recommended_action or alert.action
 
     return (
-        f"ClinicAI Sentinel has queued a {alert.level.lower()} alert for {disease} in {location}. "
-        f"{alert.message} Recommended action: {alert.action}.{score_copy}"
+        f"ClinicAI Sentinel Update\n"
+        f"State: {location}\n"
+        f"Disease: {disease}\n"
+        f"Alert level: {alert.level}\n"
+        f"{score_line}\n\n"
+        f"What is happening:\n"
+        f"- {alert.message}\n\n"
+        f"Recommended action:\n"
+        f"- {recommendation_line}\n"
+        f"- Notify the public health response lead and nearby clinics.\n"
+        f"- Reply ACK, ESCALATE, or NEED SUPPORT on WhatsApp to update the response workflow."
     )
+
+
+def _normalize_reply_command(body: str) -> str:
+    normalized = " ".join((body or "").strip().upper().split())
+    if normalized == "ACK":
+        return "ACK"
+    if normalized == "ESCALATE":
+        return "ESCALATE"
+    if normalized in {"NEED SUPPORT", "NEED_SUPPORT"}:
+        return "NEED_SUPPORT"
+    return "UNKNOWN"
+
+
+def _reply_status_for_command(command: str) -> str:
+    return {
+        "ACK": "Acknowledged by public health",
+        "ESCALATE": "Escalated by public health",
+        "NEED_SUPPORT": "Support requested by public health",
+        "UNKNOWN": "Reply received",
+    }.get(command, "Reply received")
+
+
+def _reply_response_message(*, command: str, location: str | None) -> str:
+    location_label = location or "the monitored state"
+    if command == "ACK":
+        return f"ClinicAI Sentinel received your ACK for {location_label}. The response log has been updated."
+    if command == "ESCALATE":
+        return f"ClinicAI Sentinel received your ESCALATE request for {location_label}. Admin teams have been notified."
+    if command == "NEED_SUPPORT":
+        return f"ClinicAI Sentinel logged your NEED SUPPORT request for {location_label}. Support escalation has been queued."
+    return "ClinicAI Sentinel received your WhatsApp reply. Reply with ACK, ESCALATE, or NEED SUPPORT for a tracked action."
 
 
 def _latest_contact_preference_for_audience(db: Session, audience: str) -> ContactPreference | None:
@@ -1623,6 +1761,8 @@ def _build_email_message(notification: Notification) -> EmailMessage:
 
 
 def _sms_delivery_mode() -> str:
+    if settings.twilio_account_sid and settings.twilio_auth_token and settings.twilio_sms_from:
+        return "twilio"
     if settings.termii_api_key:
         return "termii"
     if settings.sms_provider_url and settings.sms_api_key:
@@ -1643,6 +1783,8 @@ def _build_sms_message(notification: Notification) -> str:
 
 
 def _whatsapp_delivery_mode() -> str:
+    if settings.twilio_account_sid and settings.twilio_auth_token and settings.twilio_whatsapp_from:
+        return "twilio"
     return "provider" if settings.whatsapp_provider_url and settings.whatsapp_api_key else "outbox"
 
 
@@ -1688,13 +1830,70 @@ def _normalized_sms_recipient(recipient: str | None) -> str:
     return digits
 
 
+def _normalized_e164_recipient(recipient: str | None) -> str:
+    if not recipient:
+        raise ValueError("Recipient is missing")
+    trimmed = recipient.strip()
+    if trimmed.startswith("whatsapp:"):
+        trimmed = trimmed.split(":", 1)[1]
+    digits = "".join(character for character in trimmed if character.isdigit())
+    if digits.startswith("0"):
+        digits = f"234{digits[1:]}"
+    if digits.startswith("234"):
+        return f"+{digits}"
+    if trimmed.startswith("+"):
+        return trimmed
+    if digits:
+        return f"+{digits}"
+    raise ValueError("Recipient is missing")
+
+
+def _send_via_twilio_sms(notification: Notification) -> dict:
+    recipient = _normalized_e164_recipient(notification.recipient)
+    url = f"https://api.twilio.com/2010-04-01/Accounts/{settings.twilio_account_sid}/Messages.json"
+    response = requests.post(
+        url,
+        data={
+            "To": recipient,
+            "From": settings.twilio_sms_from,
+            "Body": notification.message,
+        },
+        auth=(settings.twilio_account_sid, settings.twilio_auth_token),
+        timeout=30,
+    )
+    try:
+        body = response.json()
+    except ValueError:
+        body = {"message": response.text[:200]}
+    if not response.ok:
+        raise RuntimeError(body.get("message") or "Twilio SMS request failed")
+    return body if isinstance(body, dict) else {"response": body}
+
+
+def _send_via_twilio_whatsapp(notification: Notification) -> dict:
+    recipient = _normalized_e164_recipient(notification.recipient)
+    url = f"https://api.twilio.com/2010-04-01/Accounts/{settings.twilio_account_sid}/Messages.json"
+    response = requests.post(
+        url,
+        data={
+            "To": f"whatsapp:{recipient}",
+            "From": settings.twilio_whatsapp_from,
+            "Body": notification.message,
+        },
+        auth=(settings.twilio_account_sid, settings.twilio_auth_token),
+        timeout=30,
+    )
+    try:
+        body = response.json()
+    except ValueError:
+        body = {"message": response.text[:200]}
+    if not response.ok:
+        raise RuntimeError(body.get("message") or "Twilio WhatsApp request failed")
+    return body if isinstance(body, dict) else {"response": body}
+
+
 def _send_via_termii_sms(notification: Notification) -> dict:
     recipient = _normalized_sms_recipient(notification.recipient)
-    number_payload = {
-        "to": recipient,
-        "sms": notification.message,
-        "api_key": settings.termii_api_key,
-    }
     sender_payload = {
         "to": recipient,
         "from": settings.termii_sender_id or settings.sms_sender_id,
@@ -1706,12 +1905,8 @@ def _send_via_termii_sms(notification: Notification) -> dict:
     candidate_targets: list[tuple[str, dict]] = []
     configured_base = (settings.termii_base_url or "").rstrip("/")
     if configured_base:
-        candidate_targets.append((f"{configured_base}/api/sms/number/send", number_payload))
         candidate_targets.append((f"{configured_base}/api/sms/send", sender_payload))
-    legacy_targets = [
-        ("https://api.ng.termii.com/api/sms/number/send", number_payload),
-        ("https://api.ng.termii.com/api/sms/send", sender_payload),
-    ]
+    legacy_targets = [("https://api.ng.termii.com/api/sms/send", sender_payload)]
     for item in legacy_targets:
         if item[0] not in {url for url, _ in candidate_targets}:
             candidate_targets.append(item)
@@ -1727,8 +1922,16 @@ def _send_via_termii_sms(notification: Notification) -> dict:
             return body
         except requests.HTTPError as exc:
             last_error = exc
-            if exc.response is not None and exc.response.status_code == 404:
-                continue
+            if exc.response is not None:
+                try:
+                    body = exc.response.json()
+                    message = body.get("message") or body.get("error")
+                    if message:
+                        raise RuntimeError(message) from exc
+                except ValueError:
+                    pass
+                if exc.response.status_code == 404:
+                    continue
             raise
         except Exception as exc:
             last_error = exc

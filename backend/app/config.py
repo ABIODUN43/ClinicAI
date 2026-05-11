@@ -30,6 +30,10 @@ class Settings(BaseSettings):
     termii_base_url: str = ""
     termii_api_key: str = ""
     termii_sender_id: str = "ClinicAI"
+    twilio_account_sid: str = ""
+    twilio_auth_token: str = ""
+    twilio_sms_from: str = ""
+    twilio_whatsapp_from: str = ""
 
     model_config = SettingsConfigDict(
         env_file=".env",

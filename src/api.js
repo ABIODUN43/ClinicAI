@@ -179,6 +179,14 @@ export function fetchNotifications(token, params = {}) {
   });
 }
 
+export function fetchNotificationReplies(token, params = {}) {
+  return request(withQuery("/api/notifications/replies", params), {
+    headers: {
+      Authorization: `Bearer ${token}`
+    }
+  });
+}
+
 export function createSignal(token, payload) {
   return postWithToken("/api/signals", token, payload);
 }

@@ -1,9 +1,11 @@
 from contextlib import asynccontextmanager
+from urllib.parse import parse_qs
 
-from fastapi import Depends, FastAPI, HTTPException, status
+from fastapi import Depends, FastAPI, HTTPException, Request, Response, status
 from fastapi.middleware.cors import CORSMiddleware
 from google.auth.transport import requests
 from google.oauth2 import id_token
+import jwt
 from sqlalchemy.orm import Session
 
 from .app.config import allowed_frontend_origins, settings
@@ -29,6 +31,7 @@ from .app.schemas import (
     NewsRecordResponse,
     NotificationBatchRequest,
     NotificationCreate,
+    NotificationReplyResponse,
     NotificationResponse,
     PipelineRunRequest,
     PipelineRunResponse,
@@ -78,6 +81,7 @@ from .app.services import (
     list_contact_preferences,
     list_news_records,
     list_notifications,
+    list_notification_replies,
     list_predictions,
     list_recommendations,
     list_signals,
@@ -87,6 +91,7 @@ from .app.services import (
     run_surveillance_pipeline,
     run_auto_historical_refresh,
     run_live_weather_ingestion,
+    record_whatsapp_reply,
     send_queued_email_notifications,
     send_queued_sms_notifications,
     send_queued_whatsapp_notifications,
@@ -97,6 +102,37 @@ from .app.services import (
 )
 from .app.security import bearer_scheme, create_access_token, require_bearer_token
 from .app.security import require_role, resolve_user_role
+
+
+def _decode_google_token_for_local_dev(credential: str) -> dict | None:
+    if settings.environment != "development":
+        return None
+
+    try:
+        token_info = jwt.decode(
+            credential,
+            options={
+                "verify_signature": False,
+                "verify_aud": False,
+                "verify_exp": False,
+            },
+        )
+    except jwt.PyJWTError:
+        return None
+
+    audience = token_info.get("aud")
+    issuer = token_info.get("iss")
+    email = token_info.get("email")
+    name = token_info.get("name")
+
+    if audience != settings.google_client_id:
+        return None
+    if issuer not in {"accounts.google.com", "https://accounts.google.com"}:
+        return None
+    if not email or not name:
+        return None
+
+    return token_info
 
 
 @asynccontextmanager
@@ -148,6 +184,15 @@ def login_with_google(payload: GoogleTokenRequest):
             settings.google_client_id,
         )
     except ValueError as exc:
+        token_info = _decode_google_token_for_local_dev(payload.credential)
+        if token_info:
+            email = token_info.get("email")
+            name = token_info.get("name")
+            image_url = token_info.get("picture")
+            role = payload.requested_role or resolve_user_role(email)
+            access_token = create_access_token(email=email, name=name, image_url=image_url, role=role)
+            user = UserResponse(name=name, email=email, image_url=image_url, role=role)
+            return SessionResponse(access_token=access_token, user=user)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Google token verification failed.",
@@ -583,6 +628,56 @@ def post_send_whatsapp_notifications(
     user = require_bearer_token(credentials)
     require_role(user, "admin")
     return send_queued_whatsapp_notifications(db)
+
+
+@app.get("/api/notifications/replies", response_model=list[NotificationReplyResponse])
+def get_notification_replies(
+    channel: str | None = None,
+    command: str | None = None,
+    location: str | None = None,
+    limit: int = 100,
+    credentials=Depends(bearer_scheme),
+    db: Session = Depends(get_db),
+):
+    user = require_bearer_token(credentials)
+    require_role(user, "public_health", "admin")
+    return list_notification_replies(
+        db,
+        channel=channel,
+        command=command,
+        location=location,
+        limit=limit,
+    )
+
+
+@app.post("/api/twilio/whatsapp/inbound")
+async def post_twilio_whatsapp_inbound(
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    raw_body = (await request.body()).decode("utf-8")
+    form = parse_qs(raw_body)
+    sender = (form.get("From", [""])[0] or "").strip()
+    body = (form.get("Body", [""])[0] or "").strip()
+    message_sid = form.get("MessageSid", [None])[0]
+    profile_name = form.get("ProfileName", [None])[0]
+    if not sender or not body:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Twilio inbound payload is missing From or Body.",
+        )
+    reply, response_text = record_whatsapp_reply(
+        db,
+        sender=sender,
+        body=body,
+        message_sid=str(message_sid) if message_sid else None,
+        profile_name=str(profile_name) if profile_name else None,
+    )
+    twiml = (
+        '<?xml version="1.0" encoding="UTF-8"?>'
+        f"<Response><Message>{response_text}</Message></Response>"
+    )
+    return Response(content=twiml, media_type="application/xml", headers={"X-ClinicAI-Reply-Id": str(reply.id)})
 
 
 @app.post("/api/news-records/analyze", response_model=NewsAnalysisResponse)

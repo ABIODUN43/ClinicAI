@@ -389,6 +389,23 @@ class WhatsAppDispatchResponse(BaseModel):
     outbox_paths: list[str] = Field(default_factory=list)
 
 
+class NotificationReplyResponse(BaseModel):
+    id: int
+    channel: str
+    sender: str
+    audience: str
+    body: str
+    command: str
+    status: str
+    location: str | None = None
+    related_notification_id: int | None = None
+    provider_message_sid: str | None = None
+    profile_name: str | None = None
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class PipelineRunRequest(BaseModel):
     disease: str = Field(min_length=2, max_length=100)
     location: str = Field(min_length=2, max_length=100)
