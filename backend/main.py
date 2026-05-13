@@ -189,7 +189,7 @@ def login_with_google(payload: GoogleTokenRequest):
             email = token_info.get("email")
             name = token_info.get("name")
             image_url = token_info.get("picture")
-            role = payload.requested_role or resolve_user_role(email)
+            role = resolve_user_role(email, payload.requested_role)
             access_token = create_access_token(email=email, name=name, image_url=image_url, role=role)
             user = UserResponse(name=name, email=email, image_url=image_url, role=role)
             return SessionResponse(access_token=access_token, user=user)
@@ -208,7 +208,7 @@ def login_with_google(payload: GoogleTokenRequest):
             detail="Google profile is missing required fields.",
         )
 
-    role = payload.requested_role or resolve_user_role(email)
+    role = resolve_user_role(email, payload.requested_role)
     access_token = create_access_token(email=email, name=name, image_url=image_url, role=role)
     user = UserResponse(name=name, email=email, image_url=image_url, role=role)
     return SessionResponse(access_token=access_token, user=user)

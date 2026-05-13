@@ -4,20 +4,24 @@ import jwt
 from fastapi import HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
-from .config import settings
+from .config import allowed_admin_emails, settings
 
 bearer_scheme = HTTPBearer(auto_error=False)
 
 
-def resolve_user_role(email: str) -> str:
+def resolve_user_role(email: str, requested_role: str | None = None) -> str:
     lowered = email.lower()
-    if any(keyword in lowered for keyword in ("admin", "ops", "data", "lead")):
+    requested = (requested_role or "").strip().lower()
+
+    if lowered in allowed_admin_emails():
         return "admin"
+    if requested in {"clinic", "public_health"}:
+        return requested
     if any(keyword in lowered for keyword in ("clinic", "hospital", "nurse", "doctor", "facility")):
         return "clinic"
     if any(keyword in lowered for keyword in ("ncdc", "surveillance", "publichealth", "health")):
         return "public_health"
-    return "admin"
+    return "public_health"
 
 
 def create_access_token(*, email: str, name: str, image_url: str | None, role: str) -> str:

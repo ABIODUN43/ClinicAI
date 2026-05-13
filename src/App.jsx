@@ -283,7 +283,7 @@ function App() {
 
 function LoginScreen({ onLogin, error: upstreamError }) {
   const [error, setError] = useState("");
-  const [selectedRole, setSelectedRole] = useState("admin");
+  const [selectedRole, setSelectedRole] = useState("public_health");
   const [googleRenderNonce, setGoogleRenderNonce] = useState(0);
   const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
   const canUseGoogle = Boolean(clientId);
@@ -412,10 +412,10 @@ function LoginScreen({ onLogin, error: upstreamError }) {
           type="button"
           onClick={() =>
             onLogin({
-              access_token: selectedRole === "admin" ? "demo-session-admin" : selectedRole === "public_health" ? "demo-session-public_health" : "demo-session-clinic",
+              access_token: selectedRole === "public_health" ? "demo-session-public_health" : "demo-session-clinic",
               user: {
-                email: selectedRole === "admin" ? "admin@clinicai-sentinel.local" : selectedRole === "public_health" ? "publichealth@clinicai-sentinel.local" : "clinic@clinicai-sentinel.local",
-                name: selectedRole === "admin" ? "Admin User" : selectedRole === "public_health" ? "Public Health Officer" : "Clinic User",
+                email: selectedRole === "public_health" ? "publichealth@clinicai-sentinel.local" : "clinic@clinicai-sentinel.local",
+                name: selectedRole === "public_health" ? "Public Health Officer" : "Clinic User",
                 role: selectedRole
               }
             })
@@ -424,13 +424,15 @@ function LoginScreen({ onLogin, error: upstreamError }) {
           Continue with local access
         </button>
         <label className="filter-field">
-          <span className="tiny muted">Access role</span>
+          <span className="tiny muted">Local access role</span>
           <select value={selectedRole} onChange={(event) => setSelectedRole(event.target.value)}>
-            <option value="admin">Admin / Data Ops</option>
             <option value="public_health">Public Health Officer</option>
             <option value="clinic">Clinic User</option>
           </select>
         </label>
+        <p className="tiny muted">
+          Admin access is assigned automatically only to authorized Google accounts.
+        </p>
         {error || upstreamError ? <p className="auth-error">{error || upstreamError}</p> : null}
         {googleNeedsReset ? (
           <button className="btn secondary" type="button" onClick={resetGoogleSignIn}>

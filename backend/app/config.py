@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     app_jwt_secret: str = "change-me-in-production"
     app_jwt_algorithm: str = "HS256"
     app_jwt_expiration_hours: int = 24
+    admin_emails: str = ""
     smtp_host: str = ""
     smtp_port: int = 587
     smtp_username: str = ""
@@ -50,3 +51,7 @@ def allowed_frontend_origins() -> list[str]:
     if settings.frontend_origin not in origins:
         origins.append(settings.frontend_origin)
     return origins
+
+
+def allowed_admin_emails() -> set[str]:
+    return {item.strip().lower() for item in settings.admin_emails.split(",") if item.strip()}
