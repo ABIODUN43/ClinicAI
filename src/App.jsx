@@ -368,6 +368,7 @@ function LoginScreen({ onLogin, error: upstreamError }) {
         shape: "pill",
         text: "signin_with"
       });
+      setError("");
     };
 
     mountButton();
