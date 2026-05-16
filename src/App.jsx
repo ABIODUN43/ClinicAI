@@ -3402,22 +3402,14 @@ function DataOpsPage({ initials, user, token }) {
         <article className="card">
           <div className="card-header">
             <div>
-              <h3>Weather and verified news ingestion</h3>
-              <p className="muted">These forms drive the environmental layer and the NLP source layer of the platform.</p>
+              <h3>Quick live fetch</h3>
+              <p className="muted">Use these controls to pull trusted news and live weather without filling the manual entry forms below.</p>
             </div>
           </div>
           <div className="form-grid form-grid-2">
             <FilterField label="Ingestion disease" value={forms.ingestion.disease} onChange={(value) => setForms((current) => ({ ...current, ingestion: { ...current.ingestion, disease: value } }))} options={["Lassa fever", "Cholera", "Mpox", "Meningitis"]} />
             <FilterInput label="News items per source" value={forms.ingestion.max_items_per_source} onChange={(value) => setForms((current) => ({ ...current, ingestion: { ...current.ingestion, max_items_per_source: value } }))} placeholder="2" type="number" />
             <FilterInput label="Weather target states" value={forms.ingestion.weather_locations} onChange={(value) => setForms((current) => ({ ...current, ingestion: { ...current.ingestion, weather_locations: value } }))} placeholder="Ondo,Edo,Bauchi" />
-            <FilterInput label="Weather location" value={forms.weather.location} onChange={(value) => setForms((current) => ({ ...current, weather: { ...current.weather, location: value } }))} placeholder="Ondo" />
-            <FilterField label="Weather disease" value={forms.weather.disease} onChange={(value) => setForms((current) => ({ ...current, weather: { ...current.weather, disease: value } }))} options={["Lassa fever", "Cholera", "Mpox", "Meningitis"]} />
-            <FilterInput label="Temperature C" value={forms.weather.temperature_c} onChange={(value) => setForms((current) => ({ ...current, weather: { ...current.weather, temperature_c: value } }))} placeholder="33" type="number" />
-            <FilterInput label="Rainfall mm" value={forms.weather.rainfall_mm} onChange={(value) => setForms((current) => ({ ...current, weather: { ...current.weather, rainfall_mm: value } }))} placeholder="14" type="number" />
-            <FilterInput label="Humidity %" value={forms.weather.humidity_pct} onChange={(value) => setForms((current) => ({ ...current, weather: { ...current.weather, humidity_pct: value } }))} placeholder="52" type="number" />
-            <FilterInput label="Dry season index" value={forms.weather.dry_season_index} onChange={(value) => setForms((current) => ({ ...current, weather: { ...current.weather, dry_season_index: value } }))} placeholder="0.78" type="number" />
-            <FilterInput label="Weather source" value={forms.weather.source_name} onChange={(value) => setForms((current) => ({ ...current, weather: { ...current.weather, source_name: value } }))} placeholder="NiMet feed" />
-            <FilterInput label="Recorded at" value={forms.weather.recorded_at} onChange={(value) => setForms((current) => ({ ...current, weather: { ...current.weather, recorded_at: value } }))} placeholder="2026-04-27T10:00" type="datetime-local" />
           </div>
           <div className="form-actions">
             <button
@@ -3436,6 +3428,30 @@ function DataOpsPage({ initials, user, token }) {
             >
               Fetch live weather
             </button>
+          </div>
+          <div className="footer-note">
+            These two fetch actions use only the ingestion settings above. Manual weather and manual news entry are separate below.
+          </div>
+        </article>
+
+        <article className="card">
+          <div className="card-header">
+            <div>
+              <h3>Manual weather entry</h3>
+              <p className="muted">Use this only when you want to add or correct a specific weather record by hand.</p>
+            </div>
+          </div>
+          <div className="form-grid form-grid-2">
+            <FilterInput label="Weather location" value={forms.weather.location} onChange={(value) => setForms((current) => ({ ...current, weather: { ...current.weather, location: value } }))} placeholder="Ondo" />
+            <FilterField label="Weather disease" value={forms.weather.disease} onChange={(value) => setForms((current) => ({ ...current, weather: { ...current.weather, disease: value } }))} options={["Lassa fever", "Cholera", "Mpox", "Meningitis"]} />
+            <FilterInput label="Temperature C" value={forms.weather.temperature_c} onChange={(value) => setForms((current) => ({ ...current, weather: { ...current.weather, temperature_c: value } }))} placeholder="33" type="number" />
+            <FilterInput label="Rainfall mm" value={forms.weather.rainfall_mm} onChange={(value) => setForms((current) => ({ ...current, weather: { ...current.weather, rainfall_mm: value } }))} placeholder="14" type="number" />
+            <FilterInput label="Humidity %" value={forms.weather.humidity_pct} onChange={(value) => setForms((current) => ({ ...current, weather: { ...current.weather, humidity_pct: value } }))} placeholder="52" type="number" />
+            <FilterInput label="Dry season index" value={forms.weather.dry_season_index} onChange={(value) => setForms((current) => ({ ...current, weather: { ...current.weather, dry_season_index: value } }))} placeholder="0.78" type="number" />
+            <FilterInput label="Weather source" value={forms.weather.source_name} onChange={(value) => setForms((current) => ({ ...current, weather: { ...current.weather, source_name: value } }))} placeholder="NiMet feed" />
+            <FilterInput label="Recorded at" value={forms.weather.recorded_at} onChange={(value) => setForms((current) => ({ ...current, weather: { ...current.weather, recorded_at: value } }))} placeholder="2026-04-27T10:00" type="datetime-local" />
+          </div>
+          <div className="form-actions">
             <button
               className="btn secondary"
               type="button"
@@ -3456,7 +3472,15 @@ function DataOpsPage({ initials, user, token }) {
               Save weather record
             </button>
           </div>
-          <div className="divider"></div>
+        </article>
+
+        <article className="card">
+          <div className="card-header">
+            <div>
+              <h3>Manual verified news entry</h3>
+              <p className="muted">Paste a trusted article only when you want to add a report manually or run NLP analysis on specific text.</p>
+            </div>
+          </div>
           <div className="form-grid form-grid-2">
             <FilterInput label="News title" value={forms.news.title} onChange={(value) => setForms((current) => ({ ...current, news: { ...current.news, title: value } }))} placeholder="Rodent infestation rises in Ondo communities" />
             <FilterInput label="News location" value={forms.news.location} onChange={(value) => setForms((current) => ({ ...current, news: { ...current.news, location: value } }))} placeholder="Ondo" />
