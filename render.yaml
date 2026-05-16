@@ -10,6 +10,8 @@ services:
         value: sqlite:///./clinicai_sentinel.db
       - key: APP_JWT_SECRET
         sync: false
+      - key: AUTOMATION_SECRET
+        sync: false
       - key: GOOGLE_CLIENT_ID
         sync: false
       - key: FRONTEND_ORIGIN
@@ -46,3 +48,16 @@ services:
         sync: false
       - key: VITE_GOOGLE_CLIENT_ID
         sync: false
+
+  - type: cron
+    name: clinicai-sentinel-daily-cycle
+    runtime: python
+    rootDir: .
+    schedule: "0 7 * * *"
+    buildCommand: pip install -r backend/requirements.txt
+    startCommand: python backend/scripts/trigger_daily_cycle.py
+    envVars:
+      - key: AUTOMATION_SECRET
+        sync: false
+      - key: AUTOMATION_URL
+        value: https://clinicai-sentinel-api.onrender.com/api/automation/daily-cycle

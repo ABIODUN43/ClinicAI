@@ -330,6 +330,38 @@ If you use Render:
 3. select this repo
 4. set the missing secret environment variables in Render
 
+### Render daily automation
+
+The repository now supports deployed daily automation on Render without depending on your local machine.
+
+How it works:
+
+- the backend exposes a protected endpoint at `POST /api/automation/daily-cycle`
+- the Render cron service `clinicai-sentinel-daily-cycle` calls that endpoint once per day
+- this is important for SQLite deployments because the web service updates its own database file
+
+Required Render env vars:
+
+- backend service:
+  - `AUTOMATION_SECRET`
+- cron service:
+  - `AUTOMATION_SECRET`
+  - `AUTOMATION_URL`
+
+Recommended value:
+
+```text
+AUTOMATION_URL=https://clinicai-sentinel-api.onrender.com/api/automation/daily-cycle
+```
+
+The default cron schedule in `render.yaml` is:
+
+```text
+0 7 * * *
+```
+
+That is `07:00 UTC`, which is `08:00` in Nigeria (`Africa/Lagos`).
+
 Important production note:
 
 - the current Render file keeps SQLite for easier prototype deployment

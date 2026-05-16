@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from .config import settings
 from .data import ALERTS_DATA, ANALYTICS_DATA, HOME_DATA
 from .historical_batch import execute_historical_batch, load_manifest_or_discover
-from .ingestion import ingest_live_weather, ingest_trusted_news
+from .ingestion import MONITORED_STATE_COORDINATES, ingest_live_weather, ingest_trusted_news
 from .ml import (
     model_ready,
     model_status,
@@ -1334,6 +1334,97 @@ def run_surveillance_pipeline(db: Session, payload: PipelineRunRequest) -> dict:
             f"verified text intelligence for {payload.location} and produced a {risk_level.lower()}-risk "
             f"{payload.disease} response package."
         ),
+    }
+
+
+def run_daily_surveillance_cycle(
+    db: Session,
+    *,
+    disease: str = "Lassa fever",
+    analyst: str = "ClinicAI Sentinel Daily Automation",
+) -> dict:
+    locations = list(MONITORED_STATE_COORDINATES.keys())
+
+    news_result = run_trusted_news_ingestion(
+        db,
+        NewsIngestionRequest(
+            disease=disease,
+            max_items_per_source=2,
+            auto_create_signals=True,
+        ),
+    )
+    weather_result = run_live_weather_ingestion(
+        db,
+        WeatherIngestionRequest(
+            disease=disease,
+            locations=locations,
+        ),
+    )
+
+    pipeline_runs = []
+    for location in locations:
+        result = run_surveillance_pipeline(
+            db,
+            PipelineRunRequest(
+                disease=disease,
+                location=location,
+                analyst=analyst,
+            ),
+        )
+        pipeline_runs.append(
+            {
+                "location": location,
+                "risk_level": result["prediction"].risk_level,
+                "risk_score": result["prediction"].risk_score,
+                "alert_level": result["alert"].level,
+                "recommendations": len(result["recommendations"]),
+            }
+        )
+
+    report_result = generate_surveillance_report(
+        db,
+        ReportRequest(
+            disease=disease,
+            analyst=analyst,
+        ),
+    )
+    notification_result = generate_alert_notifications(
+        db,
+        NotificationBatchRequest(
+            disease=disease,
+            audience="Public health",
+            recipient_email="surveillance@clinicai-sentinel.local",
+            recipient_sms="+2348000000000",
+            recipient_whatsapp="+2348000000000",
+        ),
+    )
+    email_dispatch_result = send_queued_email_notifications(db)
+    sms_dispatch_result = send_queued_sms_notifications(db)
+    whatsapp_dispatch_result = send_queued_whatsapp_notifications(db)
+
+    return {
+        "disease": disease,
+        "analyst": analyst,
+        "news_ingestion": news_result,
+        "weather_ingestion": weather_result,
+        "pipeline_runs": pipeline_runs,
+        "high_risk_locations": [
+            item["location"] for item in pipeline_runs if item["risk_level"] == "High"
+        ],
+        "report": {
+            "report_title": report_result["report_title"],
+            "report_path": report_result["report_path"],
+            "alert_count": report_result["alert_count"],
+            "prediction_count": report_result["prediction_count"],
+        },
+        "notifications": {
+            "count": notification_result["count"],
+            "channels": notification_result["channels"],
+            "locations": notification_result["locations"],
+        },
+        "email_dispatch": email_dispatch_result,
+        "sms_dispatch": sms_dispatch_result,
+        "whatsapp_dispatch": whatsapp_dispatch_result,
     }
 
 

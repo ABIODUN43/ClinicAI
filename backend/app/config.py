@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     app_jwt_algorithm: str = "HS256"
     app_jwt_expiration_hours: int = 24
     admin_emails: str = ""
+    automation_secret: str = ""
     smtp_host: str = ""
     smtp_port: int = 587
     smtp_username: str = ""

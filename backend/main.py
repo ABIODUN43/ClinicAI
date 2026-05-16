@@ -1,7 +1,7 @@
 from contextlib import asynccontextmanager
 from urllib.parse import parse_qs
 
-from fastapi import Depends, FastAPI, HTTPException, Request, Response, status
+from fastapi import Depends, FastAPI, Header, HTTPException, Request, Response, status
 from fastapi.middleware.cors import CORSMiddleware
 from google.auth.transport import requests
 from google.oauth2 import id_token
@@ -91,6 +91,7 @@ from .app.services import (
     run_surveillance_pipeline,
     run_auto_historical_refresh,
     run_live_weather_ingestion,
+    run_daily_surveillance_cycle,
     record_whatsapp_reply,
     send_queued_email_notifications,
     send_queued_sms_notifications,
@@ -790,3 +791,25 @@ def post_daily_report_route(
     user = require_bearer_token(credentials)
     require_role(user, "public_health", "admin")
     return generate_surveillance_report(db, payload)
+
+
+@app.post("/api/automation/daily-cycle", status_code=status.HTTP_201_CREATED)
+def post_automation_daily_cycle(
+    x_clinicai_automation_key: str | None = Header(default=None),
+    db: Session = Depends(get_db),
+):
+    if not settings.automation_secret:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Automation secret is not configured.",
+        )
+    if x_clinicai_automation_key != settings.automation_secret:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid automation key.",
+        )
+    return run_daily_surveillance_cycle(
+        db,
+        disease="Lassa fever",
+        analyst="ClinicAI Sentinel Render Daily Automation",
+    )
