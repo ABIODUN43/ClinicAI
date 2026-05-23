@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { NavLink, Route, Routes } from "react-router-dom";
+import { NavLink, Route, Routes, useLocation } from "react-router-dom";
 import { clearStoredUser, loadStoredUser, persistUser } from "./auth";
 import {
   analyzeNewsRecord,
@@ -450,38 +450,58 @@ function LoginScreen({ onLogin, error: upstreamError }) {
 
 function Sidebar({ user }) {
   const role = getRole(user);
+  const location = useLocation();
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [location.pathname]);
+
   return (
-    <aside className="sidebar">
-      <div className="brand">
-        <BrandMark />
-        <div className="brand-copy">
-          <h1>ClinicAI Sentinel</h1>
-          <p>Clinic early warning for Nigeria</p>
+    <aside className={`sidebar${mobileOpen ? " mobile-open" : ""}`}>
+      <div className="sidebar-top">
+        <div className="brand">
+          <BrandMark />
+          <div className="brand-copy">
+            <h1>ClinicAI Sentinel</h1>
+            <p>Clinic early warning for Nigeria</p>
+          </div>
         </div>
+        <button
+          type="button"
+          className="sidebar-toggle"
+          aria-expanded={mobileOpen}
+          aria-controls="primary-navigation"
+          onClick={() => setMobileOpen((current) => !current)}
+        >
+          {mobileOpen ? "Close" : "Menu"}
+        </button>
       </div>
 
-      <div className="nav-group">
-        <p className="section-title">Main</p>
-        <AppNavLink end to="/">
-          Home
-        </AppNavLink>
-        <AppNavLink to="/recommendations">Recommendations</AppNavLink>
-        <AppNavLink to="/clinic-intake">Clinic Intake</AppNavLink>
-        <AppNavLink to="/risk-map">Risk Map</AppNavLink>
-        <AppNavLink to="/news">News Feed</AppNavLink>
-        <AppNavLink to="/weather">Weather Feed</AppNavLink>
-        {canAccess(user, "analytics") ? <AppNavLink to="/analytics">Analytics</AppNavLink> : null}
-        <AppNavLink to="/alerts">Disease Alerts</AppNavLink>
-        {canAccess(user, "dataOps") ? <AppNavLink to="/data-ops">Data Ops</AppNavLink> : null}
-      </div>
+      <div className="sidebar-scroll" id="primary-navigation">
+        <div className="nav-group">
+          <p className="section-title">Main</p>
+          <AppNavLink end to="/">
+            Home
+          </AppNavLink>
+          <AppNavLink to="/recommendations">Recommendations</AppNavLink>
+          <AppNavLink to="/clinic-intake">Clinic Intake</AppNavLink>
+          <AppNavLink to="/risk-map">Risk Map</AppNavLink>
+          <AppNavLink to="/news">News Feed</AppNavLink>
+          <AppNavLink to="/weather">Weather Feed</AppNavLink>
+          {canAccess(user, "analytics") ? <AppNavLink to="/analytics">Analytics</AppNavLink> : null}
+          <AppNavLink to="/alerts">Disease Alerts</AppNavLink>
+          {canAccess(user, "dataOps") ? <AppNavLink to="/data-ops">Data Ops</AppNavLink> : null}
+        </div>
 
-      <div className="sidebar-card">
-        <p className="section-title">Today</p>
-        <div className="status-chip green">Role: {role.replace("_", " ")}</div>
-        <div className="status-chip red">High surveillance focus</div>
-        <p className="muted">
-          Lassa fever mentions and case-like signals remain elevated in Ondo, Edo, and Ebonyi.
-        </p>
+        <div className="sidebar-card">
+          <p className="section-title">Today</p>
+          <div className="status-chip green">Role: {role.replace("_", " ")}</div>
+          <div className="status-chip red">High surveillance focus</div>
+          <p className="muted">
+            Lassa fever mentions and case-like signals remain elevated in Ondo, Edo, and Ebonyi.
+          </p>
+        </div>
       </div>
     </aside>
   );

@@ -126,6 +126,27 @@ img {
   height: 100vh;
 }
 
+.sidebar-top {
+  display: block;
+}
+
+.sidebar-scroll {
+  display: block;
+}
+
+.sidebar-toggle {
+  display: none;
+  appearance: none;
+  border: 1px solid rgba(92, 74, 39, 0.12);
+  background: #ffffff;
+  color: var(--text);
+  border-radius: 999px;
+  padding: 10px 16px;
+  font-weight: 700;
+  box-shadow: 0 10px 24px rgba(43, 55, 37, 0.08);
+  cursor: pointer;
+}
+
 .brand {
   display: flex;
   gap: 14px;
@@ -1069,10 +1090,48 @@ code {
   }
 
   .sidebar {
+    padding: 16px 18px;
     position: relative;
     height: auto;
     border-right: 0;
     border-bottom: 1px solid rgba(92, 74, 39, 0.08);
+    z-index: 8;
+  }
+
+  .sidebar-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+  }
+
+  .sidebar-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .sidebar .brand {
+    margin-bottom: 0;
+    min-width: 0;
+  }
+
+  .sidebar .brand-copy p {
+    margin: 4px 0 0;
+  }
+
+  .sidebar-scroll {
+    display: none;
+    margin-top: 18px;
+  }
+
+  .sidebar.mobile-open .sidebar-scroll {
+    display: block;
+  }
+
+  .sidebar-card {
+    margin-top: 18px;
   }
 
   .hero-grid,
@@ -1135,5 +1194,42 @@ code {
   .table {
     display: block;
     overflow-x: auto;
+  }
+
+  .sidebar-top {
+    align-items: flex-start;
+  }
+
+  .sidebar .brand {
+    gap: 12px;
+    width: 100%;
+  }
+
+  .sidebar .brand-mark {
+    width: 54px;
+    height: 54px;
+    flex-basis: 54px;
+    border-radius: 16px;
+  }
+
+  .sidebar .brand-copy h1 {
+    font-size: 1rem;
+  }
+
+  .sidebar .brand-copy p {
+    font-size: 0.9rem;
+  }
+
+  .sidebar-toggle {
+    width: 100%;
+    margin-top: 12px;
+  }
+
+  .sidebar-top {
+    flex-direction: column;
+  }
+
+  .sidebar.mobile-open .sidebar-scroll {
+    margin-top: 14px;
   }
 }
